@@ -31,6 +31,7 @@ def checkpoint(tmp_path: Path) -> Path:
             "schema_version": 1,
             "model": {"name": "fake-detector", "params": {"size": 320}},
             "class_names": ["background", "cat", "dog"],
+            "manifest_identity": "manifest-123",
             "model_state": {},
         },
     )
@@ -69,6 +70,7 @@ def test_single_prediction_writes_json_and_png_with_overwrite_protection(checkpo
     assert (output / "sample.json").is_file()
     assert (output / "sample.png").is_file()
     payload = json.loads((output / "sample.json").read_text(encoding="utf-8"))
+    assert payload["manifest_identity"] == "manifest-123"
     assert payload["detections"][0]["score"] == pytest.approx(0.875)
 
     with pytest.raises(FileExistsError):
@@ -98,6 +100,7 @@ def test_directory_prediction_is_sorted_and_keeps_valid_results_on_corrupt_input
     ]
     assert [Path(item.image).relative_to(input_dir).as_posix() for item in result.errors] == ["bad.png"]
     payload = json.loads((output / "predictions.json").read_text(encoding="utf-8"))
+    assert payload["manifest_identity"] == "manifest-123"
     assert [item["image"] for item in payload["predictions"]] == ["a.jpg", "b.PNG", "nested/c.JpEg"]
     assert payload["errors"][0]["image"] == "bad.png"
     assert not any("ignored.gif" in str(item) for item in result.predictions)

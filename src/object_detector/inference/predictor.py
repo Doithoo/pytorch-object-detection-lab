@@ -51,10 +51,17 @@ class BatchPredictionResult:
 
 
 class Predictor:
-    def __init__(self, model: nn.Module, class_names: Sequence[str], device: torch.device) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        class_names: Sequence[str],
+        device: torch.device,
+        manifest_identity: str,
+    ) -> None:
         self.model = model
         self.class_names = tuple(class_names)
         self.device = device
+        self.manifest_identity = manifest_identity
 
     @classmethod
     def from_checkpoint(
@@ -66,6 +73,9 @@ class Predictor:
         checkpoint = load_checkpoint(path)
         model_data = require_mapping(checkpoint, "model")
         class_names = tuple(require_string_sequence(checkpoint, "class_names"))
+        manifest_identity = checkpoint.get("manifest_identity")
+        if not isinstance(manifest_identity, str) or not manifest_identity:
+            raise CheckpointCompatibilityError("checkpoint field manifest_identity must be a nonempty string")
         params = require_mapping(model_data, "params", prefix="model")
         model_name = model_data.get("name")
         if not isinstance(model_name, str):
@@ -74,7 +84,7 @@ class Predictor:
         model.load_state_dict(dict(require_mapping(checkpoint, "model_state")))
         resolved_device = resolve_device(device)
         model.to(resolved_device).eval()
-        return cls(model, class_names, resolved_device)
+        return cls(model, class_names, resolved_device, manifest_identity)
 
     def predict_single(
         self,
@@ -91,7 +101,9 @@ class Predictor:
             raise FileExistsError(f"prediction output already exists for {image_path.name}")
         prediction, image, tensors = self._predict_path(image_path, score_threshold)
         output_dir.mkdir(parents=True, exist_ok=True)
-        _write_json_atomic(json_path, asdict(prediction))
+        payload = asdict(prediction)
+        payload["manifest_identity"] = self.manifest_identity
+        _write_json_atomic(json_path, payload)
         render_detection_evidence(
             image,
             _display_prediction(tensors, display_limit),
@@ -151,7 +163,11 @@ class Predictor:
         result = BatchPredictionResult(tuple(predictions), tuple(errors))
         _write_json_atomic(
             output_dir / "predictions.json",
-            {"predictions": serialized_predictions, "errors": serialized_errors},
+            {
+                "manifest_identity": self.manifest_identity,
+                "predictions": serialized_predictions,
+                "errors": serialized_errors,
+            },
         )
         return result
 

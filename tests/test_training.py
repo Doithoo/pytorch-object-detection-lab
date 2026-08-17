@@ -80,6 +80,7 @@ class StochasticDetector(nn.Module):
 def test_resumed_training_matches_uninterrupted_rng_stream(prepared_voc: PreparedVoc, tmp_path: Path) -> None:
     def factory(*args, **kwargs):
         return StochasticDetector()
+
     continuous = run_training(_config(prepared_voc, tmp_path, 2, "continuous"), model_factory=factory)
     interrupted = run_training(_config(prepared_voc, tmp_path, 1, "interrupted"), model_factory=factory)
     resumed = run_training(

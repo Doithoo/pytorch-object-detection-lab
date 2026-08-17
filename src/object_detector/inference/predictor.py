@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -16,7 +18,11 @@ from torchvision.transforms.functional import pil_to_tensor
 from object_detector.evaluation.visualization import render_detection_evidence
 from object_detector.models.registry import build_model
 from object_detector.preflight import resolve_device
-from object_detector.training.checkpoint import CheckpointCompatibilityError, load_checkpoint
+from object_detector.training.checkpoint import (
+    CheckpointCompatibilityError,
+    load_checkpoint,
+    validate_preprocessing_contract,
+)
 
 ModelFactory = Callable[[str, int, str, Mapping[str, object]], nn.Module]
 SUPPORTED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
@@ -71,6 +77,7 @@ class Predictor:
         model_factory: ModelFactory = build_model,
     ) -> Predictor:
         checkpoint = load_checkpoint(path)
+        validate_preprocessing_contract(checkpoint)
         model_data = require_mapping(checkpoint, "model")
         class_names = tuple(require_string_sequence(checkpoint, "class_names"))
         manifest_identity = checkpoint.get("manifest_identity")
@@ -137,39 +144,44 @@ class Predictor:
         errors: list[PredictionError] = []
         serialized_predictions: list[dict[str, object]] = []
         serialized_errors: list[dict[str, str]] = []
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for path in paths:
-            relative = path.relative_to(input_dir)
-            try:
-                prediction, image, tensors = self._predict_path(path, score_threshold)
-            except (OSError, ValueError) as exc:
-                error = PredictionError(str(path), str(exc))
-                errors.append(error)
-                serialized_errors.append({"image": relative.as_posix(), "error": str(exc)})
-                continue
-            predictions.append(prediction)
-            serialized = asdict(prediction)
-            serialized["image"] = relative.as_posix()
-            serialized_predictions.append(serialized)
-            visualization_path = output_dir / "visualizations" / relative.parent / f"{relative.name}.png"
-            render_detection_evidence(
-                image,
-                _display_prediction(tensors, display_limit),
-                _empty_target(),
-                self.class_names,
-                visualization_path,
-                score_threshold=score_threshold,
+        output_dir.parent.mkdir(parents=True, exist_ok=True)
+        stage = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.stage-", dir=output_dir.parent))
+        try:
+            for path in paths:
+                relative = path.relative_to(input_dir)
+                try:
+                    prediction, image, tensors = self._predict_path(path, score_threshold)
+                except (OSError, ValueError) as exc:
+                    error = PredictionError(str(path), str(exc))
+                    errors.append(error)
+                    serialized_errors.append({"image": relative.as_posix(), "error": str(exc)})
+                    continue
+                predictions.append(prediction)
+                serialized = asdict(prediction)
+                serialized["image"] = relative.as_posix()
+                serialized_predictions.append(serialized)
+                visualization_path = stage / "visualizations" / relative.parent / f"{relative.name}.png"
+                render_detection_evidence(
+                    image,
+                    _display_prediction(tensors, display_limit),
+                    _empty_target(),
+                    self.class_names,
+                    visualization_path,
+                    score_threshold=score_threshold,
+                )
+            result = BatchPredictionResult(tuple(predictions), tuple(errors))
+            _write_json_atomic(
+                stage / "predictions.json",
+                {
+                    "manifest_identity": self.manifest_identity,
+                    "predictions": serialized_predictions,
+                    "errors": serialized_errors,
+                },
             )
-        result = BatchPredictionResult(tuple(predictions), tuple(errors))
-        _write_json_atomic(
-            output_dir / "predictions.json",
-            {
-                "manifest_identity": self.manifest_identity,
-                "predictions": serialized_predictions,
-                "errors": serialized_errors,
-            },
-        )
-        return result
+            _publish_directory(stage, output_dir, overwrite=overwrite)
+            return result
+        finally:
+            shutil.rmtree(stage, ignore_errors=True)
 
     def _predict_path(
         self,
@@ -254,3 +266,20 @@ def _write_json_atomic(path: Path, value: object) -> None:
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _publish_directory(stage: Path, destination: Path, *, overwrite: bool) -> None:
+    backup: Path | None = None
+    if destination.exists():
+        if not overwrite and any(destination.iterdir()):
+            raise FileExistsError(f"prediction output directory already exists: {destination}")
+        backup = destination.with_name(f".{destination.name}.backup-{uuid.uuid4().hex}")
+        os.replace(destination, backup)
+    try:
+        os.replace(stage, destination)
+    except OSError:
+        if backup is not None and not destination.exists():
+            os.replace(backup, destination)
+        raise
+    if backup is not None:
+        shutil.rmtree(backup, ignore_errors=True)

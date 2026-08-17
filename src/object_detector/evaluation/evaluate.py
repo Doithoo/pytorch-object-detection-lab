@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import os
+import shutil
 import tempfile
+import uuid
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -22,7 +25,11 @@ from object_detector.evaluation.metrics import DetectionMetric, metric_backend_v
 from object_detector.evaluation.visualization import render_detection_evidence
 from object_detector.models.registry import build_model
 from object_detector.preflight import resolve_device
-from object_detector.training.checkpoint import CheckpointCompatibilityError, load_checkpoint
+from object_detector.training.checkpoint import (
+    CheckpointCompatibilityError,
+    load_checkpoint,
+    validate_preprocessing_contract,
+)
 
 ModelFactory = Callable[[str, int, str, Mapping[str, object]], nn.Module]
 
@@ -53,6 +60,7 @@ def evaluate_checkpoint(
     model_factory: ModelFactory = build_model,
 ) -> EvaluationResult:
     checkpoint = load_checkpoint(checkpoint_path)
+    validate_preprocessing_contract(checkpoint)
     config = _checkpoint_config(checkpoint)
     metadata = load_dataset_metadata(config.data.manifest_dir)
     if checkpoint.get("manifest_identity") != metadata.identity:
@@ -97,6 +105,9 @@ def evaluate_checkpoint(
         error_iou_threshold=config.evaluation.error_iou_threshold,
         overwrite=overwrite,
         manifest_identity=metadata.identity,
+        checkpoint_sha256=_sha256_file(checkpoint_path),
+        split=split,
+        max_detections=config.evaluation.max_detections,
     )
 
 
@@ -112,57 +123,83 @@ def evaluate_model(
     error_iou_threshold: float,
     overwrite: bool = False,
     manifest_identity: str | None = None,
+    checkpoint_sha256: str | None = None,
+    split: str | None = None,
+    max_detections: int = 100,
 ) -> EvaluationResult:
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
         raise FileExistsError(f"evaluation output directory already exists: {output_dir}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    visualization_dir = output_dir / "visualizations"
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.stage-", dir=output_dir.parent))
+    visualization_dir = stage / "visualizations"
     visualization_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        model.eval()
+        metric = DetectionMetric(class_names)
+        evaluated: list[_EvaluatedImage] = []
+        error_records: list[DetectionError] = []
+        prediction_records: list[dict[str, object]] = []
+        with torch.inference_mode():
+            for index in range(len(dataset)):
+                image, target = dataset[index]
+                output = model([image.to(device)])
+                prediction = _cpu_prediction(cast(Sequence[Mapping[str, torch.Tensor]], output)[0])
+                image_id = dataset.source_image_id(index)
+                metric.update([prediction], [target])
+                image_errors = analyze_image_errors(
+                    image_id, prediction, target, class_names, error_score_threshold, error_iou_threshold
+                )
+                error_records.extend(image_errors)
+                evaluated.append(_EvaluatedImage(image_id, image, prediction, target))
+                prediction_records.append(
+                    {
+                        "image_id": image_id,
+                        "predictions": _serializable_predictions(prediction, class_names, score_threshold),
+                    }
+                )
+        if not evaluated:
+            raise ValueError("evaluation dataset is empty")
+        metrics = metric.compute()
+        evaluation_payload: dict[str, object] = {
+            "metrics": _rounded(metrics),
+            "backend_versions": metric_backend_versions(),
+            "score_threshold": score_threshold,
+            "error_score_threshold": error_score_threshold,
+            "error_iou_threshold": error_iou_threshold,
+            "max_detections": max_detections,
+        }
+        if manifest_identity is not None:
+            evaluation_payload["manifest_identity"] = manifest_identity
+        if checkpoint_sha256 is not None:
+            evaluation_payload["checkpoint_sha256"] = checkpoint_sha256
+        if split is not None:
+            evaluation_payload["split"] = split
+        _write_json_atomic(stage / "evaluation.json", evaluation_payload)
+        _write_json_atomic(stage / "predictions.json", prediction_records)
+        _write_per_class_csv(stage / "per_class.csv", cast(Sequence[Mapping[str, object]], metrics["per_class"]))
+        _write_errors_csv(stage / "errors.csv", error_records)
+        _render_ranked_evidence(evaluated, error_records, class_names, visualization_dir, score_threshold)
+        _publish_directory(stage, output_dir, overwrite=overwrite)
+        return EvaluationResult(output_dir, metrics, tuple(error_records))
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
 
-    model.eval()
-    metric = DetectionMetric(class_names)
-    evaluated: list[_EvaluatedImage] = []
-    error_records: list[DetectionError] = []
-    prediction_records: list[dict[str, object]] = []
-    with torch.inference_mode():
-        for index in range(len(dataset)):
-            image, target = dataset[index]
-            output = model([image.to(device)])
-            prediction = _cpu_prediction(cast(Sequence[Mapping[str, torch.Tensor]], output)[0])
-            image_id = dataset.source_image_id(index)
-            metric.update([prediction], [target])
-            image_errors = analyze_image_errors(
-                image_id,
-                prediction,
-                target,
-                class_names,
-                error_score_threshold,
-                error_iou_threshold,
-            )
-            error_records.extend(image_errors)
-            evaluated.append(_EvaluatedImage(image_id, image, prediction, target))
-            prediction_records.append(
-                {
-                    "image_id": image_id,
-                    "predictions": _serializable_predictions(prediction, class_names, score_threshold),
-                }
-            )
 
-    if not evaluated:
-        raise ValueError("evaluation dataset is empty")
-    metrics = metric.compute()
-    evaluation_payload: dict[str, object] = {
-        "metrics": _rounded(metrics),
-        "backend_versions": metric_backend_versions(),
-    }
-    if manifest_identity is not None:
-        evaluation_payload["manifest_identity"] = manifest_identity
-    _write_json_atomic(output_dir / "evaluation.json", evaluation_payload)
-    _write_json_atomic(output_dir / "predictions.json", prediction_records)
-    _write_per_class_csv(output_dir / "per_class.csv", cast(Sequence[Mapping[str, object]], metrics["per_class"]))
-    _write_errors_csv(output_dir / "errors.csv", error_records)
-    _render_ranked_evidence(evaluated, error_records, class_names, visualization_dir, score_threshold)
-    return EvaluationResult(output_dir, metrics, tuple(error_records))
+def _publish_directory(stage: Path, destination: Path, *, overwrite: bool) -> None:
+    backup: Path | None = None
+    if destination.exists():
+        if not overwrite and any(destination.iterdir()):
+            raise FileExistsError(f"evaluation output directory already exists: {destination}")
+        backup = destination.with_name(f".{destination.name}.backup-{uuid.uuid4().hex}")
+        os.replace(destination, backup)
+    try:
+        os.replace(stage, destination)
+    except OSError:
+        if backup is not None and not destination.exists():
+            os.replace(backup, destination)
+        raise
+    if backup is not None:
+        shutil.rmtree(backup, ignore_errors=True)
 
 
 def _cpu_prediction(prediction: Mapping[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -270,6 +307,14 @@ def _render_ranked_evidence(
 
 def _safe_name(image_id: str) -> str:
     return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in image_id)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _checkpoint_config(checkpoint: Mapping[str, object]) -> AppConfig:

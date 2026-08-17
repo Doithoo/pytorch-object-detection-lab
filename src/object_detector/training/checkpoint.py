@@ -14,6 +14,11 @@ import torch
 import torchvision
 
 CHECKPOINT_SCHEMA_VERSION = 1
+EXPECTED_PREPROCESSING: dict[str, object] = {
+    "resize_owner": "torchvision_model",
+    "input_range": [0.0, 1.0],
+    "color_space": "RGB",
+}
 
 
 class CheckpointCompatibilityError(ValueError):
@@ -74,6 +79,17 @@ def validate_resume_identity(checkpoint: Mapping[str, object], expected: ResumeI
         mismatches.append("preprocessing")
     if mismatches:
         raise CheckpointCompatibilityError("resume identity mismatch: " + ", ".join(mismatches))
+
+
+def validate_preprocessing_contract(checkpoint: Mapping[str, object]) -> None:
+    value = checkpoint.get("preprocessing")
+    if value is None:
+        return
+    if not isinstance(value, Mapping):
+        raise CheckpointCompatibilityError("checkpoint preprocessing contract must be a mapping")
+    mismatches = [key for key, expected in EXPECTED_PREPROCESSING.items() if key in value and value[key] != expected]
+    if mismatches:
+        raise CheckpointCompatibilityError("unsupported preprocessing contract: " + ", ".join(mismatches))
 
 
 def build_run_metadata(*, device: torch.device, seed: int) -> dict[str, object]:

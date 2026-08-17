@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import pickle
 import platform
 import subprocess
 import sys
@@ -41,7 +42,9 @@ def save_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
 
 def load_checkpoint(path: Path, map_location: str | torch.device = "cpu") -> dict[str, object]:
     try:
-        loaded = torch.load(path, map_location=map_location, weights_only=False)
+        loaded = torch.load(path, map_location=map_location, weights_only=True)
+    except pickle.UnpicklingError as exc:
+        raise CheckpointCompatibilityError(f"cannot load safe tensor-only checkpoint {path}: {exc}") from exc
     except (OSError, RuntimeError, EOFError) as exc:
         raise CheckpointCompatibilityError(f"cannot load checkpoint {path}: {exc}") from exc
     if not isinstance(loaded, dict):

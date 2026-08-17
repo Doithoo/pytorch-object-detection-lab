@@ -31,6 +31,19 @@ def checkpoint_payload(manifest_identity: str = "manifest") -> dict[str, object]
     }
 
 
+def _write_marker(path: str) -> str:
+    Path(path).write_text("executed", encoding="utf-8")
+    return "executed"
+
+
+class MaliciousPayload:
+    def __init__(self, marker: Path) -> None:
+        self.marker = marker
+
+    def __reduce__(self):
+        return _write_marker, (str(self.marker),)
+
+
 def test_checkpoint_round_trip_is_atomic(tmp_path: Path) -> None:
     path = tmp_path / "last.pt"
 
@@ -72,3 +85,14 @@ def test_run_metadata_records_framework_versions() -> None:
 
     assert metadata["torch"] == torch.__version__
     assert isinstance(metadata["torchvision"], str)
+
+
+def test_checkpoint_loader_does_not_execute_pickle_globals(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "malicious.pt"
+    marker = tmp_path / "executed.txt"
+    torch.save({"schema_version": 1, "payload": MaliciousPayload(marker)}, checkpoint)
+
+    with pytest.raises(CheckpointCompatibilityError, match="safe tensor-only checkpoint"):
+        load_checkpoint(checkpoint)
+
+    assert not marker.exists()

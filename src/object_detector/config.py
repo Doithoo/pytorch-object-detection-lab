@@ -184,11 +184,15 @@ def _validate_config(config: AppConfig) -> None:
     _require_number("train.grad_clip", config.train.grad_clip, minimum=0.0)
     _require_integer("train.seed", config.train.seed)
     _require_type("train.amp", config.train.amp, bool)
+    if config.train.best_metric != "map_50_95":
+        raise ConfigError("train.best_metric currently supports only 'map_50_95'")
 
     _require_probability("evaluation.score_threshold", config.evaluation.score_threshold)
     _require_probability("evaluation.error_score_threshold", config.evaluation.error_score_threshold)
     _require_probability("evaluation.error_iou_threshold", config.evaluation.error_iou_threshold)
     _require_integer("evaluation.max_detections", config.evaluation.max_detections, minimum=1)
+    if config.evaluation.max_detections != 100:
+        raise ConfigError("evaluation.max_detections currently supports only 100")
     _require_type("device", config.device, str)
     if config.run_name is not None:
         _require_type("run_name", config.run_name, str)

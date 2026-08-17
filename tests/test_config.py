@@ -24,6 +24,18 @@ def test_unknown_field_is_rejected(tmp_path: Path) -> None:
         load_config(path)
 
 
+def test_unsupported_metric_controls_are_rejected(tmp_path: Path) -> None:
+    best_metric = tmp_path / "best.yaml"
+    best_metric.write_text("train:\n  best_metric: map_50\n", encoding="utf-8")
+    max_detections = tmp_path / "max.yaml"
+    max_detections.write_text("evaluation:\n  max_detections: 10\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="train.best_metric"):
+        load_config(best_metric)
+    with pytest.raises(ConfigError, match="evaluation.max_detections"):
+        load_config(max_detections)
+
+
 def test_paths_are_serialized_for_yaml() -> None:
     serialized = config_to_dict(load_config())
 

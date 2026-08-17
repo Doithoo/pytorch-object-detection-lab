@@ -44,3 +44,21 @@ def test_unsafe_tar_member_is_rejected(tmp_path: Path, kind: str) -> None:
         safe_extract_tar(archive_path, tmp_path / "extract")
 
     assert not (tmp_path / "escape.txt").exists()
+
+
+def test_extraction_does_not_overwrite_conflicting_existing_file(tmp_path: Path) -> None:
+    archive_path = tmp_path / "conflict.tar"
+    with tarfile.open(archive_path, "w") as archive:
+        member = tarfile.TarInfo("VOCdevkit/VOC2007/JPEGImages/sample.jpg")
+        payload = b"new content"
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    destination = tmp_path / "raw"
+    existing = destination / "VOCdevkit/VOC2007/JPEGImages/sample.jpg"
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(b"existing content")
+
+    with pytest.raises(DownloadError, match="conflicting existing file"):
+        safe_extract_tar(archive_path, destination)
+
+    assert existing.read_bytes() == b"existing content"

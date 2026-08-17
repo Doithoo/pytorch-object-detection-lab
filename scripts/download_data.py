@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import shutil
 import tarfile
+import tempfile
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -75,6 +76,7 @@ def download_archive(
 def safe_extract_tar(archive_path: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     destination_root = destination.resolve()
+    stage = Path(tempfile.mkdtemp(prefix=f".{archive_path.stem}.extract-", dir=destination.parent))
     try:
         with tarfile.open(archive_path) as archive:
             members = archive.getmembers()
@@ -90,7 +92,7 @@ def safe_extract_tar(archive_path: Path, destination: Path) -> None:
                 ):
                     raise DownloadError(f"unsafe tar member: {member.name}")
             for member in members:
-                target = destination / member.name
+                target = stage / member.name
                 if member.isdir():
                     target.mkdir(parents=True, exist_ok=True)
                     continue
@@ -100,8 +102,26 @@ def safe_extract_tar(archive_path: Path, destination: Path) -> None:
                     raise DownloadError(f"cannot read tar member: {member.name}")
                 with source, target.open("wb") as output:
                     shutil.copyfileobj(source, output)
+            for member in members:
+                if not member.isfile():
+                    continue
+                staged = stage / member.name
+                target = destination / member.name
+                if target.exists() and (not target.is_file() or target.read_bytes() != staged.read_bytes()):
+                    raise DownloadError(f"conflicting existing file: {member.name}")
+            for member in members:
+                if member.isfile():
+                    staged = stage / member.name
+                    target = destination / member.name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if not target.exists():
+                        staged.replace(target)
+                elif member.isdir():
+                    (destination / member.name).mkdir(parents=True, exist_ok=True)
     except (OSError, tarfile.TarError) as exc:
         raise DownloadError(f"cannot extract {archive_path}: {exc}") from exc
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
 
 
 def download_voc2007(data_dir: Path) -> tuple[Path, ...]:

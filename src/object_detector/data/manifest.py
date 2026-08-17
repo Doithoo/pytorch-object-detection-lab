@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import yaml
+from PIL import Image, UnidentifiedImageError
 
 from object_detector.data.schema import VOC_CLASSES
 from object_detector.data.voc import VocFormatError, parse_voc_annotation
@@ -63,7 +64,7 @@ def prepare_voc2007(
                 raise ManifestError(f"{split_name} split has {actual} images; expected {expected}")
 
     rows = {name: tuple(_validate_sample(voc_root, image_id) for image_id in ids) for name, ids in split_ids.items()}
-    split_hashes = {name: _rows_hash(items) for name, items in rows.items()}
+    split_hashes = {name: _rows_hash(items, voc_root) for name, items in rows.items()}
     identity_data = {
         "name": "voc2007",
         "classes": VOC_CLASSES,
@@ -161,12 +162,32 @@ def _validate_sample(voc_root: Path, image_id: str) -> ManifestRow:
         raise ManifestError(str(exc)) from exc
     if annotation.filename != image_path.name:
         raise ManifestError(f"{annotation_path}: filename {annotation.filename!r} does not match {image_path.name!r}")
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+        with Image.open(image_path) as image:
+            dimensions = image.size
+    except (OSError, UnidentifiedImageError) as exc:
+        raise ManifestError(f"cannot decode image for {image_id}: {image_path}: {exc}") from exc
+    if dimensions != (annotation.width, annotation.height):
+        raise ManifestError(
+            f"{annotation_path}: dimensions {annotation.width}x{annotation.height} "
+            f"disagree with image {dimensions[0]}x{dimensions[1]}"
+        )
     return ManifestRow(image_id=image_id, image_path=image_rel.as_posix(), annotation_path=annotation_rel.as_posix())
 
 
-def _rows_hash(rows: tuple[ManifestRow, ...]) -> str:
-    normalized = "".join(f"{row.image_id},{row.image_path},{row.annotation_path}\n" for row in rows)
-    return hashlib.sha256(normalized.encode()).hexdigest()
+def _rows_hash(rows: tuple[ManifestRow, ...], voc_root: Path) -> str:
+    digest = hashlib.sha256()
+    for row in rows:
+        digest.update(f"{row.image_id},{row.image_path},{row.annotation_path}\n".encode())
+        for relative_path in (row.image_path, row.annotation_path):
+            path = voc_root / relative_path
+            digest.update(relative_path.encode())
+            with path.open("rb") as handle:
+                while chunk := handle.read(1024 * 1024):
+                    digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _write_manifests(

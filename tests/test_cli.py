@@ -199,3 +199,43 @@ def test_predict_handler_runs_single_mode(tmp_path: Path, capsys, monkeypatch) -
     assert captured["output_dir"] == output
     assert captured["score_threshold"] == 0.5
     assert capsys.readouterr().out == f"{output}\n"
+
+
+@pytest.mark.parametrize("command", ["show-config", "prepare-data", "train", "evaluate", "predict"])
+def test_every_subcommand_has_help(command: str, capsys) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        build_parser().parse_args([command, "--help"])
+
+    assert exit_info.value.code == 0
+    assert "usage:" in capsys.readouterr().out
+
+
+def test_known_user_errors_return_nonzero_without_traceback(tmp_path: Path, capsys) -> None:
+    bad_config = tmp_path / "bad.yaml"
+    bad_config.write_text("train:\n  epochz: 1\n", encoding="utf-8")
+
+    result = main(["show-config", "--config", str(bad_config)])
+
+    stderr = capsys.readouterr().err
+    assert result == 2
+    assert "unknown configuration field: train.epochz" in stderr
+    assert "Traceback" not in stderr
+
+
+def test_missing_prediction_checkpoint_is_a_concise_error(tmp_path: Path, capsys) -> None:
+    result = main(
+        [
+            "predict",
+            "--checkpoint",
+            str(tmp_path / "missing.pt"),
+            "--image",
+            str(tmp_path / "image.jpg"),
+            "--output-dir",
+            str(tmp_path / "output"),
+        ]
+    )
+
+    stderr = capsys.readouterr().err
+    assert result == 2
+    assert "cannot load checkpoint" in stderr
+    assert "Traceback" not in stderr

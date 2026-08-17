@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -68,7 +69,11 @@ def main(argv: list[str] | None = None) -> int:
     if handler is None:
         parser.print_help()
         return 0
-    return int(handler(args))
+    try:
+        return int(handler(args))
+    except (ValueError, RuntimeError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
 
 def _show_config(args: argparse.Namespace) -> int:

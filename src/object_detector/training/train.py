@@ -136,6 +136,7 @@ def run_training(
         best_metric = cast(float, checkpoint["best_metric"])
         saved_history = cast(Sequence[Mapping[str, float | int]], checkpoint.get("metric_history", []))
         history = [dict(item) for item in saved_history]
+        _restore_rng_state(checkpoint, generator)
     elif run_dir.exists():
         raise FileExistsError(f"run directory already exists: {run_dir}")
 
@@ -185,6 +186,7 @@ def run_training(
             best_metric,
             history,
             run_metadata,
+            generator,
         )
         save_checkpoint(run_dir / "last.pt", payload)
         if improved:
@@ -248,6 +250,7 @@ def _checkpoint_payload(
     best_metric: float,
     history: list[dict[str, float | int]],
     run_metadata: Mapping[str, object],
+    generator: torch.Generator,
 ) -> dict[str, object]:
     return {
         "schema_version": 1,
@@ -265,6 +268,7 @@ def _checkpoint_payload(
         "best_metric": best_metric,
         "metric_history": [dict(row) for row in history],
         "run_metadata": dict(run_metadata),
+        "rng_state": _capture_rng_state(generator),
     }
 
 
@@ -300,6 +304,50 @@ def _seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def _capture_rng_state(generator: torch.Generator) -> dict[str, object]:
+    numpy_state = cast(tuple[str, np.ndarray, int, int, float], np.random.get_state())
+    return {
+        "python": random.getstate(),
+        "numpy": {
+            "bit_generator": numpy_state[0],
+            "state": numpy_state[1].tolist(),
+            "position": numpy_state[2],
+            "has_gauss": numpy_state[3],
+            "cached_gaussian": numpy_state[4],
+        },
+        "torch_cpu": torch.get_rng_state(),
+        "torch_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+        "loader_generator": generator.get_state(),
+    }
+
+
+def _restore_rng_state(checkpoint: Mapping[str, object], generator: torch.Generator) -> None:
+    rng_state = checkpoint.get("rng_state")
+    if not isinstance(rng_state, Mapping):
+        raise ValueError("checkpoint is missing reproducibility RNG state")
+    numpy_state = rng_state.get("numpy")
+    if not isinstance(numpy_state, Mapping):
+        raise ValueError("checkpoint numpy RNG state must be a mapping")
+    try:
+        random.setstate(cast(tuple[Any, ...], rng_state["python"]))
+        np.random.set_state(
+            (
+                cast(str, numpy_state["bit_generator"]),
+                np.asarray(cast(Sequence[int], numpy_state["state"]), dtype=np.uint32),
+                cast(int, numpy_state["position"]),
+                cast(int, numpy_state["has_gauss"]),
+                cast(float, numpy_state["cached_gaussian"]),
+            )
+        )
+        torch.set_rng_state(cast(torch.Tensor, rng_state["torch_cpu"]))
+        generator.set_state(cast(torch.Tensor, rng_state["loader_generator"]))
+        cuda_states = cast(Sequence[torch.Tensor], rng_state.get("torch_cuda", []))
+        if cuda_states and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(list(cuda_states))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"checkpoint reproducibility RNG state is invalid: {exc}") from exc
 
 
 def _write_yaml_atomic(path: Path, data: Mapping[str, object]) -> None:

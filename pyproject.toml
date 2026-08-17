@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=77,<82"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "object-detector"
+version = "0.1.0"
+description = "Beginner-oriented reproducible PyTorch object detection"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Yashowhoo" }]
+dependencies = [
+    "torch>=2.0,<3",
+    "torchvision>=0.15,<1",
+    "torchmetrics>=1.4,<2",
+    "pycocotools>=2.0.7,<3",
+    "numpy>=1.24,<3",
+    "pillow>=9,<12",
+    "pyyaml>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7,<9",
+    "ruff>=0.6,<1",
+    "mypy>=1.15,<2",
+    "types-PyYAML>=6,<7",
+    "pre-commit>=3,<5",
+    "build>=1.2,<2",
+    "twine>=5,<7",
+    "matplotlib>=3.6,<4",
+]
+
+[project.urls]
+Homepage = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Source = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Issues = "https://github.com/Yashowhoo/pytorch-object-detection-lab/issues"
+
+[project.scripts]
+detect = "object_detector.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+object_detector = ["py.typed"]
+
+[tool.setuptools.data-files]
+"share/object-detector/configs" = [
+    "configs/fasterrcnn_resnet50_fpn.yaml",
+    "configs/learning_minimal.yaml",
+    "configs/reference_fasterrcnn.yaml",
+    "configs/ssdlite320_mobilenet_v3.yaml",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+extend-exclude = ["docs", "README.md", "README.zh-CN.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src", "scripts", "examples"]
+check_untyped_defs = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torchvision",
+    "torchvision.*",
+    "torchmetrics",
+    "torchmetrics.*",
+    "pycocotools",
+    "pycocotools.*",
+]
+ignore_missing_imports = true

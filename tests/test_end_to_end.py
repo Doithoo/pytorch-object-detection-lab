@@ -21,7 +21,7 @@ def _fake_model_factory(*args, **kwargs):
     return FakeDetector()
 
 
-def test_offline_prepare_train_resume_evaluate_and_predict(tmp_path: Path, monkeypatch) -> None:
+def test_offline_workflow(tmp_path: Path, monkeypatch) -> None:
     def reject_network(self, address):
         raise AssertionError(f"unexpected network access: {address}")
 
@@ -50,6 +50,9 @@ def test_offline_prepare_train_resume_evaluate_and_predict(tmp_path: Path, monke
         run_name="acceptance",
     )
 
+    dry_run = run_training(config, dry_run_mode=True, model_factory=_fake_model_factory)
+    assert dry_run.dry_run_result is not None
+    print("dry-run OK")
     first = run_training(config, model_factory=_fake_model_factory)
     resumed = run_training(
         replace(config, train=replace(config.train, epochs=2)),

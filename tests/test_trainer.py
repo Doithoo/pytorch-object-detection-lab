@@ -52,3 +52,19 @@ def test_dry_run_performs_one_update() -> None:
     assert result.target_counts == (1,)
     assert result.losses["loss_total"] > 0
     assert model.scale.item() != before
+
+
+def test_training_supports_amp_and_gradient_clipping() -> None:
+    model = FakeDetector()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    stats = train_one_epoch(
+        model,
+        [_batch()],
+        optimizer,
+        torch.device("cpu"),
+        amp=True,
+        grad_clip=0.1,
+    )
+
+    assert torch.isfinite(torch.tensor(stats["loss_total"]))

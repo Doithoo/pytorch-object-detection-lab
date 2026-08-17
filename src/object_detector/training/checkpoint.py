@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+import torchvision
 
 CHECKPOINT_SCHEMA_VERSION = 1
 
@@ -75,7 +76,8 @@ def validate_resume_identity(checkpoint: Mapping[str, object], expected: ResumeI
 def build_run_metadata(*, device: torch.device, seed: int) -> dict[str, object]:
     return {
         "python": sys.version.split()[0],
-        "torch": torch.__version__,
+        "torch": str(torch.__version__),
+        "torchvision": str(torchvision.__version__),
         "platform": platform.platform(),
         "device": str(device),
         "seed": seed,

@@ -26,18 +26,22 @@ def train_one_epoch(
     loader: Iterable[tuple[list[torch.Tensor], list[DetectionTarget]]],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    *,
+    amp: bool = False,
+    grad_clip: float = 0.0,
 ) -> dict[str, float]:
     model.train()
+    scaler = torch.amp.GradScaler(device.type, enabled=amp and device.type == "cuda")
     totals: dict[str, float] = {}
     sample_count = 0
     for images, targets in loader:
         images, targets = move_batch(images, targets, device)
         optimizer.zero_grad(set_to_none=True)
-        losses = model(images, targets)
+        with torch.autocast(device_type=device.type, enabled=amp and device.type in {"cpu", "cuda"}):
+            losses = model(images, targets)
+            total = sum_losses(losses)
         _validate_losses(losses, targets)
-        total = sum_losses(losses)
-        total.backward()
-        optimizer.step()
+        _optimizer_step(total, model, optimizer, scaler, grad_clip)
         batch_size = len(images)
         sample_count += batch_size
         totals["loss_total"] = totals.get("loss_total", 0.0) + float(total.detach()) * batch_size
@@ -53,6 +57,9 @@ def dry_run(
     loader: Iterable[tuple[list[torch.Tensor], list[DetectionTarget]]],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    *,
+    amp: bool = False,
+    grad_clip: float = 0.0,
 ) -> DryRunResult:
     model.train()
     iterator = iter(loader)
@@ -64,11 +71,12 @@ def dry_run(
     target_counts = tuple(int(target["boxes"].shape[0]) for target in targets)
     images, targets = move_batch(images, targets, device)
     optimizer.zero_grad(set_to_none=True)
-    losses = model(images, targets)
+    with torch.autocast(device_type=device.type, enabled=amp and device.type in {"cpu", "cuda"}):
+        losses = model(images, targets)
+        total = sum_losses(losses)
     _validate_losses(losses, targets)
-    total = sum_losses(losses)
-    total.backward()
-    optimizer.step()
+    scaler = torch.amp.GradScaler(device.type, enabled=amp and device.type == "cuda")
+    _optimizer_step(total, model, optimizer, scaler, grad_clip)
     return DryRunResult(
         batch_size=len(images),
         image_shapes=image_shapes,
@@ -99,3 +107,24 @@ def _validate_losses(losses: Mapping[str, torch.Tensor], targets: list[Detection
         if value.numel() != 1 or not torch.isfinite(value).item():
             image_ids = [int(item["image_id"].flatten()[0]) for item in targets]
             raise NonFiniteLossError(f"non-finite {name} for image IDs {image_ids}")
+
+
+def _optimizer_step(
+    total: torch.Tensor,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scaler: torch.amp.GradScaler,
+    grad_clip: float,
+) -> None:
+    if scaler.is_enabled():
+        scaler.scale(total).backward()
+        scaler.unscale_(optimizer)
+    else:
+        total.backward()
+    if grad_clip > 0.0:
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+    if scaler.is_enabled():
+        scaler.step(optimizer)
+        scaler.update()
+    else:
+        optimizer.step()

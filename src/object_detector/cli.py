@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from pathlib import Path
 
 import yaml
@@ -8,6 +9,7 @@ import yaml
 from object_detector import __version__
 from object_detector.config import config_to_dict, load_config
 from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
+from object_detector.training.train import run_training
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +27,14 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_data.add_argument("--manifest-dir", type=Path, default=Path("data/manifests"))
     prepare_data.add_argument("--allow-nonstandard-counts", action="store_true")
     prepare_data.set_defaults(handler=_prepare_data)
+
+    train = subparsers.add_parser("train", help="train an object detector")
+    train.add_argument("--config", type=Path)
+    train.add_argument("--set", dest="overrides", action="append", nargs=2, default=[], metavar=("KEY", "VALUE"))
+    train.add_argument("--dry-run", action="store_true")
+    train.add_argument("--resume", type=Path)
+    train.add_argument("--device")
+    train.set_defaults(handler=_train)
     return parser
 
 
@@ -50,4 +60,21 @@ def _prepare_data(args: argparse.Namespace) -> int:
     counts = metadata.split_counts
     print(f"identity={metadata.identity}")
     print(f"train={counts['train']} valid={counts['valid']} test={counts['test']}")
+    return 0
+
+
+def _train(args: argparse.Namespace) -> int:
+    config = load_config(args.config, [tuple(override) for override in args.overrides])
+    if args.device is not None:
+        config = replace(config, device=args.device)
+    result = run_training(config, resume=args.resume, dry_run_mode=args.dry_run)
+    if result.dry_run_result is not None:
+        diagnostics = result.dry_run_result
+        print(f"image_shapes={diagnostics.image_shapes}")
+        print(f"target_counts={diagnostics.target_counts}")
+        for name, value in diagnostics.losses.items():
+            print(f"{name}={value}")
+        print("dry-run OK")
+    else:
+        print(result.run_dir)
     return 0

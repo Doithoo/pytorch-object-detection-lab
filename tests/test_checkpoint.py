@@ -8,6 +8,7 @@ import torch
 from object_detector.training.checkpoint import (
     CheckpointCompatibilityError,
     ResumeIdentity,
+    build_run_metadata,
     load_checkpoint,
     save_checkpoint,
     validate_resume_identity,
@@ -64,3 +65,10 @@ def test_save_failure_leaves_no_final_or_temporary_file(tmp_path: Path, monkeypa
         save_checkpoint(path, checkpoint_payload())
     assert not path.exists()
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_run_metadata_records_framework_versions() -> None:
+    metadata = build_run_metadata(device=torch.device("cpu"), seed=42)
+
+    assert metadata["torch"] == torch.__version__
+    assert isinstance(metadata["torchvision"], str)

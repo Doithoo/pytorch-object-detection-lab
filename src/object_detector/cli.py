@@ -10,6 +10,7 @@ from object_detector import __version__
 from object_detector.config import config_to_dict, load_config
 from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
 from object_detector.evaluation.evaluate import evaluate_checkpoint
+from object_detector.inference.predictor import Predictor
 from object_detector.training.train import run_training
 
 
@@ -45,6 +46,18 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--score-threshold", type=float, default=0.05)
     evaluate.add_argument("--overwrite", action="store_true")
     evaluate.set_defaults(handler=_evaluate)
+
+    predict = subparsers.add_parser("predict", help="predict from a checkpoint")
+    predict.add_argument("--checkpoint", type=Path, required=True)
+    input_mode = predict.add_mutually_exclusive_group(required=True)
+    input_mode.add_argument("--image", type=Path)
+    input_mode.add_argument("--input-dir", type=Path)
+    predict.add_argument("--output-dir", type=Path, required=True)
+    predict.add_argument("--device", default="auto")
+    predict.add_argument("--score-threshold", type=float, default=0.5)
+    predict.add_argument("--display-limit", type=int, default=20)
+    predict.add_argument("--overwrite", action="store_true")
+    predict.set_defaults(handler=_predict)
     return parser
 
 
@@ -100,4 +113,19 @@ def _evaluate(args: argparse.Namespace) -> int:
         overwrite=args.overwrite,
     )
     print(result.output_dir)
+    return 0
+
+
+def _predict(args: argparse.Namespace) -> int:
+    predictor = Predictor.from_checkpoint(args.checkpoint, device=args.device)
+    options = {
+        "score_threshold": args.score_threshold,
+        "display_limit": args.display_limit,
+        "overwrite": args.overwrite,
+    }
+    if args.image is not None:
+        predictor.predict_single(args.image, args.output_dir, **options)
+    else:
+        predictor.predict_directory(args.input_dir, args.output_dir, **options)
+    print(args.output_dir)
     return 0

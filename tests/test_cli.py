@@ -1,6 +1,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 import object_detector.cli as cli
 from object_detector.cli import build_parser, main
 from tests.fixtures.voc import build_voc_tree
@@ -128,4 +130,72 @@ def test_evaluate_handler_reports_output_directory(tmp_path: Path, capsys, monke
     assert captured["checkpoint"] == Path("best.pt")
     assert captured["split"] == "test"
     assert captured["device"] == "cpu"
+    assert capsys.readouterr().out == f"{output}\n"
+
+
+def test_predict_parser_requires_exactly_one_input_mode() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "predict",
+            "--checkpoint",
+            "best.pt",
+            "--image",
+            "sample.jpg",
+            "--output-dir",
+            "predictions",
+            "--display-limit",
+            "5",
+        ]
+    )
+
+    assert args.image == Path("sample.jpg")
+    assert args.input_dir is None
+    assert args.display_limit == 5
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            [
+                "predict",
+                "--checkpoint",
+                "best.pt",
+                "--image",
+                "sample.jpg",
+                "--input-dir",
+                "images",
+                "--output-dir",
+                "predictions",
+            ]
+        )
+
+
+def test_predict_handler_runs_single_mode(tmp_path: Path, capsys, monkeypatch) -> None:
+    captured = {}
+    image = tmp_path / "sample.jpg"
+    output = tmp_path / "predictions"
+
+    class FakePredictor:
+        def predict_single(self, image_path, output_dir, **kwargs):
+            captured.update(image_path=image_path, output_dir=output_dir, **kwargs)
+
+    fake_type = SimpleNamespace(from_checkpoint=lambda checkpoint, device: FakePredictor())
+    monkeypatch.setattr(cli, "Predictor", fake_type, raising=False)
+
+    result = main(
+        [
+            "predict",
+            "--checkpoint",
+            "best.pt",
+            "--image",
+            str(image),
+            "--output-dir",
+            str(output),
+            "--device",
+            "cpu",
+        ]
+    )
+
+    assert result == 0
+    assert captured["image_path"] == image
+    assert captured["output_dir"] == output
+    assert captured["score_threshold"] == 0.5
     assert capsys.readouterr().out == f"{output}\n"

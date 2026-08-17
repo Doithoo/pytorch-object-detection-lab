@@ -98,6 +98,8 @@ def test_checkpoint_evaluation_reconstructs_model_and_dataset(prepared_voc: Prep
 
     assert result.metrics["image_count"] == 1
     assert (result.output_dir / "evaluation.json").is_file()
+    payload = json.loads((result.output_dir / "evaluation.json").read_text(encoding="utf-8"))
+    assert payload["manifest_identity"] == prepared_voc.metadata.identity
 
 
 def test_checkpoint_evaluation_rejects_manifest_mismatch_before_model_build(

@@ -96,6 +96,7 @@ def evaluate_checkpoint(
         error_score_threshold=config.evaluation.error_score_threshold,
         error_iou_threshold=config.evaluation.error_iou_threshold,
         overwrite=overwrite,
+        manifest_identity=metadata.identity,
     )
 
 
@@ -110,6 +111,7 @@ def evaluate_model(
     error_score_threshold: float,
     error_iou_threshold: float,
     overwrite: bool = False,
+    manifest_identity: str | None = None,
 ) -> EvaluationResult:
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
         raise FileExistsError(f"evaluation output directory already exists: {output_dir}")
@@ -149,10 +151,13 @@ def evaluate_model(
     if not evaluated:
         raise ValueError("evaluation dataset is empty")
     metrics = metric.compute()
-    _write_json_atomic(
-        output_dir / "evaluation.json",
-        {"metrics": _rounded(metrics), "backend_versions": metric_backend_versions()},
-    )
+    evaluation_payload: dict[str, object] = {
+        "metrics": _rounded(metrics),
+        "backend_versions": metric_backend_versions(),
+    }
+    if manifest_identity is not None:
+        evaluation_payload["manifest_identity"] = manifest_identity
+    _write_json_atomic(output_dir / "evaluation.json", evaluation_payload)
     _write_json_atomic(output_dir / "predictions.json", prediction_records)
     _write_per_class_csv(output_dir / "per_class.csv", cast(Sequence[Mapping[str, object]], metrics["per_class"]))
     _write_errors_csv(output_dir / "errors.csv", error_records)

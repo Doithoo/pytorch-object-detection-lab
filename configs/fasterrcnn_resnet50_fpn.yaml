@@ -1,0 +1,11 @@
+model:
+  name: fasterrcnn_resnet50_fpn
+  weights: none
+  expected_num_classes: 21
+train:
+  epochs: 2
+  batch_size: 2
+  amp: false
+data:
+  num_workers: 0
+device: auto

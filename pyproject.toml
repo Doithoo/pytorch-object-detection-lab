@@ -42,6 +42,14 @@ where = ["src"]
 [tool.setuptools.package-data]
 object_detector = ["py.typed"]
 
+[tool.setuptools.data-files]
+"share/object-detector/configs" = [
+    "configs/fasterrcnn_resnet50_fpn.yaml",
+    "configs/learning_minimal.yaml",
+    "configs/reference_fasterrcnn.yaml",
+    "configs/ssdlite320_mobilenet_v3.yaml",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"

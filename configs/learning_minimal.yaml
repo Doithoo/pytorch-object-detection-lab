@@ -1,0 +1,34 @@
+data:
+  name: voc2007
+  data_dir: data/raw
+  manifest_dir: data/manifests
+  num_workers: 0
+  horizontal_flip: 0.5
+  max_train_samples: 32
+  max_valid_samples: 16
+  max_test_samples: 16
+model:
+  name: fasterrcnn_mobilenet_v3_large_320_fpn
+  weights: none
+  expected_num_classes: 21
+  params: {}
+train:
+  epochs: 2
+  batch_size: 2
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0.0005
+  optimizer: sgd
+  scheduler: none
+  seed: 42
+  amp: false
+  grad_clip: 0.0
+  best_metric: map_50_95
+evaluation:
+  score_threshold: 0.05
+  error_score_threshold: 0.5
+  error_iou_threshold: 0.5
+  max_detections: 100
+device: auto
+output_dir: artifacts
+run_name: null

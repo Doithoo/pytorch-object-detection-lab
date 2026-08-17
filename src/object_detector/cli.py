@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 from object_detector import __version__
-from object_detector.config import config_to_dict, load_config
+from object_detector.config import config_to_dict, load_config, load_config_with_sources
 from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
 from object_detector.evaluation.evaluate import evaluate_checkpoint
 from object_detector.inference.predictor import Predictor
@@ -77,8 +77,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _show_config(args: argparse.Namespace) -> int:
-    config = load_config(args.config, [tuple(override) for override in args.overrides])
-    print(yaml.safe_dump(config_to_dict(config), sort_keys=False), end="")
+    config, sources = load_config_with_sources(args.config, [tuple(override) for override in args.overrides])
+    resolved = config_to_dict(config)
+    resolved["sources"] = sources
+    print(yaml.safe_dump(resolved, sort_keys=False), end="")
     return 0
 
 

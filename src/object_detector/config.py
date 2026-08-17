@@ -95,6 +95,25 @@ def load_config(path: Path | None = None, overrides: Sequence[tuple[str, str]] =
     return config
 
 
+def load_config_with_sources(
+    path: Path | None = None,
+    overrides: Sequence[tuple[str, str]] = (),
+) -> tuple[AppConfig, dict[str, str]]:
+    config = load_config(path, overrides)
+    sources = {key: "default" for key in _leaf_paths(asdict(AppConfig()))}
+    if path is not None:
+        try:
+            loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError) as exc:
+            raise ConfigError(f"cannot read configuration {path}: {exc}") from exc
+        if isinstance(loaded, Mapping):
+            for key in _leaf_paths(loaded):
+                sources[key] = "yaml"
+    for key, _ in overrides:
+        sources[key] = "cli"
+    return config, dict(sorted(sources.items()))
+
+
 def config_from_dict(values: Mapping[str, object]) -> AppConfig:
     merged = asdict(AppConfig())
     _merge_known(merged, values)
@@ -105,6 +124,18 @@ def config_from_dict(values: Mapping[str, object]) -> AppConfig:
 
 def config_to_dict(config: AppConfig) -> dict[str, object]:
     return _serialize(asdict(config))
+
+
+def _leaf_paths(values: Mapping[Any, object], prefix: str = "") -> tuple[str, ...]:
+    paths: list[str] = []
+    for raw_key, value in values.items():
+        key = str(raw_key)
+        path = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, Mapping) and value:
+            paths.extend(_leaf_paths(value, path))
+        else:
+            paths.append(path)
+    return tuple(paths)
 
 
 def _merge_known(target: dict[str, Any], incoming: Mapping[Any, object], prefix: str = "") -> None:

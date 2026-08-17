@@ -33,6 +33,11 @@ dev = [
     "matplotlib>=3.6,<4",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Source = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Issues = "https://github.com/Yashowhoo/pytorch-object-detection-lab/issues"
+
 [project.scripts]
 detect = "object_detector.cli:main"
 

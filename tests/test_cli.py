@@ -76,3 +76,56 @@ def test_train_dry_run_prints_diagnostics_and_applies_device(tmp_path: Path, cap
     assert "target_counts=(2,)" in output
     assert "loss_total=1.25" in output
     assert output.endswith("dry-run OK\n")
+
+
+def test_evaluate_parser_accepts_checkpoint_runtime_controls() -> None:
+    args = build_parser().parse_args(
+        [
+            "evaluate",
+            "--checkpoint",
+            "best.pt",
+            "--split",
+            "test",
+            "--output-dir",
+            "evaluation",
+            "--device",
+            "cpu",
+            "--score-threshold",
+            "0.25",
+            "--overwrite",
+        ]
+    )
+
+    assert args.checkpoint == Path("best.pt")
+    assert args.split == "test"
+    assert args.score_threshold == 0.25
+    assert args.overwrite is True
+
+
+def test_evaluate_handler_reports_output_directory(tmp_path: Path, capsys, monkeypatch) -> None:
+    captured = {}
+    output = tmp_path / "evaluation"
+
+    def fake_evaluate_checkpoint(checkpoint, **kwargs):
+        captured.update(checkpoint=checkpoint, **kwargs)
+        return SimpleNamespace(output_dir=output)
+
+    monkeypatch.setattr(cli, "evaluate_checkpoint", fake_evaluate_checkpoint, raising=False)
+
+    result = main(
+        [
+            "evaluate",
+            "--checkpoint",
+            "best.pt",
+            "--output-dir",
+            str(output),
+            "--device",
+            "cpu",
+        ]
+    )
+
+    assert result == 0
+    assert captured["checkpoint"] == Path("best.pt")
+    assert captured["split"] == "test"
+    assert captured["device"] == "cpu"
+    assert capsys.readouterr().out == f"{output}\n"

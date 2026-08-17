@@ -95,11 +95,19 @@ def load_config(path: Path | None = None, overrides: Sequence[tuple[str, str]] =
     return config
 
 
+def config_from_dict(values: Mapping[str, object]) -> AppConfig:
+    merged = asdict(AppConfig())
+    _merge_known(merged, values)
+    config = _construct_config(merged)
+    _validate_config(config)
+    return config
+
+
 def config_to_dict(config: AppConfig) -> dict[str, object]:
     return _serialize(asdict(config))
 
 
-def _merge_known(target: dict[str, Any], incoming: Mapping[object, object], prefix: str = "") -> None:
+def _merge_known(target: dict[str, Any], incoming: Mapping[Any, object], prefix: str = "") -> None:
     for raw_key, value in incoming.items():
         if not isinstance(raw_key, str):
             raise ConfigError(f"{prefix or 'configuration'} keys must be strings")

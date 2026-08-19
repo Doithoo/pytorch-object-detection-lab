@@ -2,7 +2,7 @@ data:
   name: voc2007
   data_dir: data/raw
   manifest_dir: data/manifests
-  num_workers: 4
+  num_workers: 0
   horizontal_flip: 0.5
 model:
   name: fasterrcnn_mobilenet_v3_large_320_fpn
@@ -18,9 +18,9 @@ train:
   optimizer: sgd
   scheduler: step
   seed: 42
-  amp: true
+  amp: false
   grad_clip: 0.0
   best_metric: map_50_95
-device: auto
+device: cpu
 output_dir: artifacts
 run_name: reference-fasterrcnn

@@ -7,7 +7,7 @@ from PIL import Image
 from torch import nn
 
 import object_detector.inference.predictor as predictor_module
-from object_detector.training.checkpoint import save_checkpoint
+from object_detector.training.checkpoint import EXPECTED_PREPROCESSING, save_checkpoint
 
 
 class FakeDetector(nn.Module):
@@ -31,6 +31,7 @@ def checkpoint(tmp_path: Path) -> Path:
             "schema_version": 1,
             "model": {"name": "fake-detector", "params": {"size": 320}},
             "class_names": ["background", "cat", "dog"],
+            "preprocessing": dict(EXPECTED_PREPROCESSING),
             "manifest_identity": "manifest-123",
             "model_state": {},
         },

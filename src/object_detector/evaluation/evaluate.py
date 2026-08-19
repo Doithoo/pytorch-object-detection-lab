@@ -15,11 +15,11 @@ from typing import Any, cast
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader
 
 from object_detector.config import AppConfig, ConfigError, config_from_dict
-from object_detector.data.dataset import VocDetectionDataset
+from object_detector.data.dataset import VocDetectionDataset, detection_collate
 from object_detector.data.manifest import load_dataset_metadata
-from object_detector.data.transforms import DetectionTarget
 from object_detector.evaluation.errors import DetectionError, analyze_image_errors
 from object_detector.evaluation.metrics import DetectionMetric, metric_backend_versions
 from object_detector.evaluation.visualization import render_detection_evidence
@@ -42,11 +42,10 @@ class EvaluationResult:
 
 
 @dataclass(frozen=True)
-class _EvaluatedImage:
+class _EvidenceReference:
     image_id: str
-    image: torch.Tensor
-    prediction: Mapping[str, torch.Tensor]
-    target: DetectionTarget
+    dataset_index: int
+    predictions: tuple[dict[str, object], ...]
 
 
 def evaluate_checkpoint(
@@ -108,6 +107,8 @@ def evaluate_checkpoint(
         checkpoint_sha256=_sha256_file(checkpoint_path),
         split=split,
         max_detections=config.evaluation.max_detections,
+        batch_size=config.train.batch_size,
+        num_workers=config.data.num_workers,
     )
 
 
@@ -126,7 +127,13 @@ def evaluate_model(
     checkpoint_sha256: str | None = None,
     split: str | None = None,
     max_detections: int = 100,
+    batch_size: int = 1,
+    num_workers: int = 0,
 ) -> EvaluationResult:
+    if batch_size < 1:
+        raise ValueError("evaluation batch_size must be positive")
+    if num_workers < 0:
+        raise ValueError("evaluation num_workers must not be negative")
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
         raise FileExistsError(f"evaluation output directory already exists: {output_dir}")
     output_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -136,28 +143,40 @@ def evaluate_model(
     try:
         model.eval()
         metric = DetectionMetric(class_names)
-        evaluated: list[_EvaluatedImage] = []
+        evidence_references: list[_EvidenceReference] = []
         error_records: list[DetectionError] = []
         prediction_records: list[dict[str, object]] = []
+        loader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            collate_fn=detection_collate,
+        )
+        dataset_index = 0
         with torch.inference_mode():
-            for index in range(len(dataset)):
-                image, target = dataset[index]
-                output = model([image.to(device)])
-                prediction = _cpu_prediction(cast(Sequence[Mapping[str, torch.Tensor]], output)[0])
-                image_id = dataset.source_image_id(index)
-                metric.update([prediction], [target])
-                image_errors = analyze_image_errors(
-                    image_id, prediction, target, class_names, error_score_threshold, error_iou_threshold
-                )
-                error_records.extend(image_errors)
-                evaluated.append(_EvaluatedImage(image_id, image, prediction, target))
-                prediction_records.append(
-                    {
-                        "image_id": image_id,
-                        "predictions": _serializable_predictions(prediction, class_names, score_threshold),
-                    }
-                )
-        if not evaluated:
+            for images, targets in loader:
+                device_images = [image.to(device) for image in images]
+                outputs = cast(Sequence[Mapping[str, torch.Tensor]], model(device_images))
+                cpu_predictions = [_cpu_prediction(output) for output in outputs]
+                metric.update(cpu_predictions, targets)
+                for target, prediction in zip(targets, cpu_predictions, strict=True):
+                    image_id = dataset.source_image_id(dataset_index)
+                    image_errors = analyze_image_errors(
+                        image_id, prediction, target, class_names, error_score_threshold, error_iou_threshold
+                    )
+                    error_records.extend(image_errors)
+                    serialized = _serializable_predictions(prediction, class_names, score_threshold)
+                    evidence_references.append(_EvidenceReference(image_id, dataset_index, tuple(serialized)))
+                    prediction_records.append(
+                        {
+                            "image_id": image_id,
+                            "predictions": serialized,
+                        }
+                    )
+                    dataset_index += 1
+                del images, targets, device_images, outputs, cpu_predictions
+        if not evidence_references:
             raise ValueError("evaluation dataset is empty")
         metrics = metric.compute()
         evaluation_payload: dict[str, object] = {
@@ -178,7 +197,14 @@ def evaluate_model(
         _write_json_atomic(stage / "predictions.json", prediction_records)
         _write_per_class_csv(stage / "per_class.csv", cast(Sequence[Mapping[str, object]], metrics["per_class"]))
         _write_errors_csv(stage / "errors.csv", error_records)
-        _render_ranked_evidence(evaluated, error_records, class_names, visualization_dir, score_threshold)
+        _render_ranked_evidence(
+            dataset,
+            evidence_references,
+            error_records,
+            class_names,
+            visualization_dir,
+            score_threshold,
+        )
         _publish_directory(stage, output_dir, overwrite=overwrite)
         return EvaluationResult(output_dir, metrics, tuple(error_records))
     finally:
@@ -274,35 +300,50 @@ def _write_json_atomic(path: Path, data: object) -> None:
 
 
 def _render_ranked_evidence(
-    evaluated: Sequence[_EvaluatedImage],
+    dataset: VocDetectionDataset,
+    references: Sequence[_EvidenceReference],
     errors: Sequence[DetectionError],
     class_names: Sequence[str],
     output_dir: Path,
     score_threshold: float,
 ) -> None:
-    by_id = {item.image_id: item for item in evaluated}
-    first = evaluated[0]
-    render_detection_evidence(
-        first.image,
-        first.prediction,
-        first.target,
-        class_names,
-        output_dir / "summary.png",
-        score_threshold=score_threshold,
-    )
+    by_id = {item.image_id: item for item in references}
+    _render_evidence_reference(dataset, references[0], class_names, output_dir / "summary.png", score_threshold)
     for kind in ("missed", "false_positive"):
         counts = Counter(error.image_id for error in errors if error.kind == kind)
         ranked_ids = sorted(counts, key=lambda image_id: (-counts[image_id], image_id))[:5]
         for rank, image_id in enumerate(ranked_ids, start=1):
-            item = by_id[image_id]
-            render_detection_evidence(
-                item.image,
-                item.prediction,
-                item.target,
+            _render_evidence_reference(
+                dataset,
+                by_id[image_id],
                 class_names,
                 output_dir / f"{kind}-{rank:02d}-{_safe_name(image_id)}.png",
-                score_threshold=score_threshold,
+                score_threshold,
             )
+
+
+def _render_evidence_reference(
+    dataset: VocDetectionDataset,
+    reference: _EvidenceReference,
+    class_names: Sequence[str],
+    output: Path,
+    score_threshold: float,
+) -> None:
+    image, target = dataset[reference.dataset_index]
+    predictions = reference.predictions
+    prediction = {
+        "boxes": torch.tensor([item["box"] for item in predictions], dtype=torch.float32).reshape(-1, 4),
+        "labels": torch.tensor([item["class_id"] for item in predictions], dtype=torch.int64),
+        "scores": torch.tensor([item["score"] for item in predictions], dtype=torch.float32),
+    }
+    render_detection_evidence(
+        image,
+        prediction,
+        target,
+        class_names,
+        output,
+        score_threshold=score_threshold,
+    )
 
 
 def _safe_name(image_id: str) -> str:

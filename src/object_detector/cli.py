@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -9,10 +10,6 @@ import yaml
 
 from object_detector import __version__
 from object_detector.config import config_to_dict, load_config, load_config_with_sources
-from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
-from object_detector.evaluation.evaluate import evaluate_checkpoint
-from object_detector.inference.predictor import Predictor
-from object_detector.training.train import run_training
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +21,26 @@ def build_parser() -> argparse.ArgumentParser:
     show_config.add_argument("--config", type=Path)
     show_config.add_argument("--set", dest="overrides", action="append", nargs=2, default=[], metavar=("KEY", "VALUE"))
     show_config.set_defaults(handler=_show_config)
+
+    list_registered_models = subparsers.add_parser("list-models", help="list registered detection models")
+    list_registered_models.set_defaults(handler=_list_models)
+
+    model_info = subparsers.add_parser("model-info", help="show metadata for one registered model")
+    model_info.add_argument("name")
+    model_info.set_defaults(handler=_model_info)
+
+    inspect_data = subparsers.add_parser("inspect-data", help="summarize a prepared manifest split")
+    inspect_data.add_argument("--manifest-dir", type=Path, required=True)
+    inspect_data.add_argument("--data-dir", type=Path)
+    inspect_data.add_argument("--split", choices=("train", "valid", "test"), default="train")
+    inspect_data.add_argument("--limit", type=_positive_int, default=16)
+    inspect_data.set_defaults(handler=_inspect_data)
+
+    compare = subparsers.add_parser("compare-runs", help="compare one metric across compatible runs")
+    compare.add_argument("run_dirs", nargs="+", type=Path)
+    compare.add_argument("--metric", required=True)
+    compare.add_argument("--output", type=Path)
+    compare.set_defaults(handler=_compare_runs)
 
     prepare_data = subparsers.add_parser("prepare-data", help="validate VOC 2007 and write fixed manifests")
     prepare_data.add_argument("--data-dir", type=Path, default=Path("data/raw"))
@@ -44,7 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--split", choices=("train", "valid", "test"), default="test")
     evaluate.add_argument("--output-dir", type=Path, required=True)
     evaluate.add_argument("--device", default="auto")
-    evaluate.add_argument("--score-threshold", type=float, default=0.05)
+    evaluate.add_argument("--score-threshold", type=_probability, default=0.05)
     evaluate.add_argument("--overwrite", action="store_true")
     evaluate.set_defaults(handler=_evaluate)
 
@@ -55,8 +72,8 @@ def build_parser() -> argparse.ArgumentParser:
     input_mode.add_argument("--input-dir", type=Path)
     predict.add_argument("--output-dir", type=Path, required=True)
     predict.add_argument("--device", default="auto")
-    predict.add_argument("--score-threshold", type=float, default=0.5)
-    predict.add_argument("--display-limit", type=int, default=20)
+    predict.add_argument("--score-threshold", type=_probability, default=0.5)
+    predict.add_argument("--display-limit", type=_nonnegative_int, default=20)
     predict.add_argument("--overwrite", action="store_true")
     predict.set_defaults(handler=_predict)
     return parser
@@ -84,7 +101,60 @@ def _show_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def _list_models(_args: argparse.Namespace) -> int:
+    from object_detector.models.registry import get_model_spec, list_models
+
+    print("name\tfamily\tweights")
+    for name in list_models():
+        spec = get_model_spec(name)
+        print(f"{name}\t{spec.family}\t{','.join(spec.supported_weights)}")
+    return 0
+
+
+def _model_info(args: argparse.Namespace) -> int:
+    from object_detector.models.registry import get_model_spec
+
+    spec = get_model_spec(args.name)
+    print(f"name: {spec.name}")
+    print(f"family: {spec.family}")
+    print(f"description: {spec.description}")
+    print(f"weights: {', '.join(spec.supported_weights)}")
+    print("parameters:")
+    for name, description in spec.parameters.items():
+        print(f"  {name}: {description}")
+    print("input_notes:")
+    for note in spec.input_notes:
+        print(f"  - {note}")
+    return 0
+
+
+def _inspect_data(args: argparse.Namespace) -> int:
+    from object_detector.data.inspection import inspect_prepared_data
+
+    report = inspect_prepared_data(
+        args.manifest_dir,
+        split=args.split,
+        data_dir=args.data_dir,
+        limit=args.limit,
+    )
+    print(yaml.safe_dump(report, sort_keys=False), end="")
+    return 0
+
+
+def _compare_runs(args: argparse.Namespace) -> int:
+    from object_detector.evaluation.comparison import compare_runs, format_comparison, write_comparison_csv
+
+    report = compare_runs(args.run_dirs, metric=args.metric)
+    print(format_comparison(report), end="")
+    if args.output is not None:
+        output = write_comparison_csv(report, args.output)
+        print(f"comparison_csv: {output}")
+    return 0
+
+
 def _prepare_data(args: argparse.Namespace) -> int:
+    from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
+
     expected_counts = None if args.allow_nonstandard_counts else VOC2007_SPLIT_COUNTS
     metadata = prepare_voc2007(args.data_dir, args.manifest_dir, expected_split_counts=expected_counts)
     counts = metadata.split_counts
@@ -94,6 +164,8 @@ def _prepare_data(args: argparse.Namespace) -> int:
 
 
 def _train(args: argparse.Namespace) -> int:
+    from object_detector.training.train import run_training
+
     config = load_config(args.config, [tuple(override) for override in args.overrides])
     if args.device is not None:
         config = replace(config, device=args.device)
@@ -111,6 +183,8 @@ def _train(args: argparse.Namespace) -> int:
 
 
 def _evaluate(args: argparse.Namespace) -> int:
+    from object_detector.evaluation.evaluate import evaluate_checkpoint
+
     result = evaluate_checkpoint(
         args.checkpoint,
         split=args.split,
@@ -124,6 +198,8 @@ def _evaluate(args: argparse.Namespace) -> int:
 
 
 def _predict(args: argparse.Namespace) -> int:
+    from object_detector.inference.predictor import Predictor
+
     predictor = Predictor.from_checkpoint(args.checkpoint, device=args.device)
     options = {
         "score_threshold": args.score_threshold,
@@ -136,3 +212,33 @@ def _predict(args: argparse.Namespace) -> int:
         predictor.predict_directory(args.input_dir, args.output_dir, **options)
     print(args.output_dir)
     return 0
+
+
+def _probability(value: str) -> float:
+    try:
+        result = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number between 0 and 1") from exc
+    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
+        raise argparse.ArgumentTypeError("must be a finite number between 0 and 1")
+    return result
+
+
+def _nonnegative_int(value: str) -> int:
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a nonnegative integer") from exc
+    if result < 0:
+        raise argparse.ArgumentTypeError("must be a nonnegative integer")
+    return result
+
+
+def _positive_int(value: str) -> int:
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if result <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return result

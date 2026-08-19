@@ -1,0 +1,35 @@
+python: 3.12.13
+torch: 2.10.0+cu128
+torchvision: 0.25.0+cu128
+platform: Linux-6.12.90+-x86_64-with-glibc2.35
+device: cuda:0
+cuda_device_count: 2
+seed: 42
+git_revision: null
+manifest_identity: b9bdc2604322c07f26c9a0135a063c7702b0dfb261171401076cf6733cfdb5b7
+split_hashes:
+  train: 0db09d4d95248aebbd6e17f1ee202d13506cc081fe554d913344c7350cc22584
+  valid: 62630ac366ecad7f6dd2f51b9de501f66fd7e8d57d2bc000fdbd6f7db065540a
+  test: f21265f3e1a75a4c65e6e19f4c02b98e5d0b7b0c573dd36f755ca5623117c0e5
+class_names:
+- background
+- aeroplane
+- bicycle
+- bird
+- boat
+- bottle
+- bus
+- car
+- cat
+- chair
+- cow
+- diningtable
+- dog
+- horse
+- motorbike
+- person
+- pottedplant
+- sheep
+- sofa
+- train
+- tvmonitor

@@ -1,0 +1,146 @@
+{
+  "dataset_identity": "b9bdc2604322c07f26c9a0135a063c7702b0dfb261171401076cf6733cfdb5b7",
+  "split_counts": {
+    "train": 2501,
+    "valid": 2510,
+    "test": 4952
+  },
+  "training_seconds": 3025.66,
+  "evaluation_seconds": 74.893,
+  "completed_epochs": 26,
+  "metrics": {
+    "map_50_95": 0.3223115801811218,
+    "map_50": 0.6099168658256531,
+    "map_75": 0.3026808798313141,
+    "mar_1": 0.33898115158081055,
+    "mar_10": 0.41354653239250183,
+    "mar_100": 0.4150078594684601,
+    "per_class": [
+      {
+        "class_id": 1,
+        "class_name": "aeroplane",
+        "map_50_95": 0.35706526041030884,
+        "mar_100": 0.4284210503101349
+      },
+      {
+        "class_id": 2,
+        "class_name": "bicycle",
+        "map_50_95": 0.3832266330718994,
+        "mar_100": 0.4551928639411926
+      },
+      {
+        "class_id": 3,
+        "class_name": "bird",
+        "map_50_95": 0.27322062849998474,
+        "mar_100": 0.34967321157455444
+      },
+      {
+        "class_id": 4,
+        "class_name": "boat",
+        "map_50_95": 0.2093961089849472,
+        "mar_100": 0.2984790802001953
+      },
+      {
+        "class_id": 5,
+        "class_name": "bottle",
+        "map_50_95": 0.09160386770963669,
+        "mar_100": 0.1518123596906662
+      },
+      {
+        "class_id": 6,
+        "class_name": "bus",
+        "map_50_95": 0.46543675661087036,
+        "mar_100": 0.5605633854866028
+      },
+      {
+        "class_id": 7,
+        "class_name": "car",
+        "map_50_95": 0.4237962067127228,
+        "mar_100": 0.4756869375705719
+      },
+      {
+        "class_id": 8,
+        "class_name": "cat",
+        "map_50_95": 0.4661996066570282,
+        "mar_100": 0.5527933239936829
+      },
+      {
+        "class_id": 9,
+        "class_name": "chair",
+        "map_50_95": 0.1456247717142105,
+        "mar_100": 0.27724868059158325
+      },
+      {
+        "class_id": 10,
+        "class_name": "cow",
+        "map_50_95": 0.28393110632896423,
+        "mar_100": 0.4237704873085022
+      },
+      {
+        "class_id": 11,
+        "class_name": "diningtable",
+        "map_50_95": 0.29020193219184875,
+        "mar_100": 0.4184466004371643
+      },
+      {
+        "class_id": 12,
+        "class_name": "dog",
+        "map_50_95": 0.41494372487068176,
+        "mar_100": 0.5192229151725769
+      },
+      {
+        "class_id": 13,
+        "class_name": "horse",
+        "map_50_95": 0.444163054227829,
+        "mar_100": 0.5419540405273438
+      },
+      {
+        "class_id": 14,
+        "class_name": "motorbike",
+        "map_50_95": 0.4037111699581146,
+        "mar_100": 0.4753846228122711
+      },
+      {
+        "class_id": 15,
+        "class_name": "person",
+        "map_50_95": 0.3208966553211212,
+        "mar_100": 0.3964443504810333
+      },
+      {
+        "class_id": 16,
+        "class_name": "pottedplant",
+        "map_50_95": 0.08243569731712341,
+        "mar_100": 0.1706250011920929
+      },
+      {
+        "class_id": 17,
+        "class_name": "sheep",
+        "map_50_95": 0.29307353496551514,
+        "mar_100": 0.3942148685455322
+      },
+      {
+        "class_id": 18,
+        "class_name": "sofa",
+        "map_50_95": 0.3699161112308502,
+        "mar_100": 0.5117154717445374
+      },
+      {
+        "class_id": 19,
+        "class_name": "train",
+        "map_50_95": 0.45081961154937744,
+        "mar_100": 0.5361701846122742
+      },
+      {
+        "class_id": 20,
+        "class_name": "tvmonitor",
+        "map_50_95": 0.2765692174434662,
+        "mar_100": 0.3623376488685608
+      }
+    ],
+    "image_count": 4952,
+    "target_count": 12032,
+    "prediction_count": 26353
+  },
+  "checkpoint": "/kaggle/working/artifacts/reference-fasterrcnn/best.pt",
+  "evaluation_dir": "/kaggle/working/artifacts/reference-fasterrcnn/evaluation"
+}

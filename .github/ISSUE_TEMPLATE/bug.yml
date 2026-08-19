@@ -1,0 +1,39 @@
+name: Bug report
+description: Report reproducible incorrect behavior in the package, CLI, or documentation
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove private paths or data before posting logs or artifacts.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Include the complete command, concise output, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Prefer a synthetic fixture or the smallest relevant config override.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Python, torch, torchvision, device, and repository revision.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and removed sensitive data.
+          required: true
+        - label: The problem reproduces with the current main branch or latest release.
+          required: true

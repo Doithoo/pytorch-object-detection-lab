@@ -1,5 +1,6 @@
 import csv
 import json
+import weakref
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from torch import nn
 import object_detector.evaluation.evaluate as evaluation
 from object_detector.config import AppConfig, DataConfig, ModelConfig, config_to_dict
 from object_detector.data.dataset import VocDetectionDataset
-from object_detector.training.checkpoint import CheckpointCompatibilityError, save_checkpoint
+from object_detector.training.checkpoint import EXPECTED_PREPROCESSING, CheckpointCompatibilityError, save_checkpoint
 from tests.conftest import PreparedVoc
 
 
@@ -23,6 +24,47 @@ class EmptyDetector(nn.Module):
             }
             for _ in images
         ]
+
+
+class CountingDetector(EmptyDetector):
+    def __init__(self) -> None:
+        super().__init__()
+        self.batch_sizes: list[int] = []
+
+    def forward(self, images):
+        self.batch_sizes.append(len(images))
+        return super().forward(images)
+
+
+class StreamingDataset:
+    def __init__(self, length: int = 4) -> None:
+        self.length = length
+        self.first_pass_calls = 0
+        self.image_refs: list[weakref.ReferenceType[torch.Tensor]] = []
+
+    def __len__(self) -> int:
+        return self.length
+
+    def __getitem__(self, index: int):
+        if self.first_pass_calls < self.length:
+            assert sum(reference() is not None for reference in self.image_refs) <= 1, (
+                "evaluation retained decoded images from earlier samples"
+            )
+            self.first_pass_calls += 1
+        image = torch.zeros((3, 12, 12))
+        self.image_refs.append(weakref.ref(image))
+        target = {
+            "boxes": torch.tensor([[1.0, 1.0, 8.0, 8.0]]),
+            "labels": torch.tensor([1]),
+            "image_id": torch.tensor([index]),
+            "area": torch.tensor([49.0]),
+            "iscrowd": torch.tensor([0]),
+            "difficult": torch.tensor([False]),
+        }
+        return image, target
+
+    def source_image_id(self, index: int) -> str:
+        return f"image-{index}"
 
 
 def test_empty_evaluation_writes_complete_artifact_set(prepared_voc: PreparedVoc, tmp_path: Path) -> None:
@@ -61,6 +103,42 @@ def test_empty_evaluation_writes_complete_artifact_set(prepared_voc: PreparedVoc
     assert (output / "visualizations" / "summary.png").is_file()
 
 
+def test_evaluation_does_not_retain_all_decoded_images(tmp_path: Path) -> None:
+    dataset = StreamingDataset()
+
+    result = evaluation.evaluate_model(
+        EmptyDetector(),
+        dataset,  # type: ignore[arg-type]
+        ("background", "object"),
+        torch.device("cpu"),
+        tmp_path / "streaming-evaluation",
+        score_threshold=0.5,
+        error_score_threshold=0.5,
+        error_iou_threshold=0.5,
+    )
+
+    assert result.metrics["image_count"] == len(dataset)
+
+
+def test_evaluation_batches_model_inference(tmp_path: Path) -> None:
+    dataset = StreamingDataset()
+    model = CountingDetector()
+
+    evaluation.evaluate_model(
+        model,
+        dataset,  # type: ignore[arg-type]
+        ("background", "object"),
+        torch.device("cpu"),
+        tmp_path / "batched-evaluation",
+        score_threshold=0.5,
+        error_score_threshold=0.5,
+        error_iou_threshold=0.5,
+        batch_size=2,
+    )
+
+    assert model.batch_sizes == [2, 2]
+
+
 def _checkpoint_payload(prepared_voc: PreparedVoc, *, manifest_identity: str | None = None):
     class_names = ("background", *prepared_voc.metadata.class_names)
     config = AppConfig(
@@ -76,7 +154,7 @@ def _checkpoint_payload(prepared_voc: PreparedVoc, *, manifest_identity: str | N
         "config": config_to_dict(config),
         "model": {"name": "fake", "params": {}},
         "class_names": list(class_names),
-        "preprocessing": {"input_range": [0.0, 1.0]},
+        "preprocessing": dict(EXPECTED_PREPROCESSING),
         "manifest_identity": manifest_identity or prepared_voc.metadata.identity,
         "model_state": {},
     }

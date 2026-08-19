@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -160,6 +161,10 @@ def _set_known(values: dict[str, Any], dotted_key: str, value: object) -> None:
     for index, part in enumerate(parts):
         path = ".".join(parts[: index + 1])
         if part not in current:
+            parent_path = ".".join(parts[:index])
+            if parent_path == "model.params" and index == len(parts) - 1 and part:
+                current[part] = value
+                return
             raise ConfigError(f"unknown configuration field: {path}")
         if index == len(parts) - 1:
             current[part] = value
@@ -189,7 +194,7 @@ def _construct_config(values: dict[str, Any]) -> AppConfig:
 
 
 def _validate_config(config: AppConfig) -> None:
-    _require_type("data.name", config.data.name, str)
+    _require_choice("data.name", config.data.name, {"voc2007"})
     _require_integer("data.num_workers", config.data.num_workers, minimum=0)
     _require_probability("data.horizontal_flip", config.data.horizontal_flip)
     for field_name, value in (
@@ -200,7 +205,7 @@ def _validate_config(config: AppConfig) -> None:
         if value is not None:
             _require_integer(f"data.{field_name}", value, minimum=1)
 
-    _require_type("model.name", config.model.name, str)
+    _require_nonempty_string("model.name", config.model.name)
     if config.model.weights not in {"none", "imagenet1k_v1"}:
         raise ConfigError("model.weights must be 'none' or 'imagenet1k_v1'")
     _require_integer("model.expected_num_classes", config.model.expected_num_classes, minimum=2)
@@ -213,8 +218,10 @@ def _validate_config(config: AppConfig) -> None:
     _require_number("train.momentum", config.train.momentum, minimum=0.0)
     _require_number("train.weight_decay", config.train.weight_decay, minimum=0.0)
     _require_number("train.grad_clip", config.train.grad_clip, minimum=0.0)
-    _require_integer("train.seed", config.train.seed)
+    _require_integer("train.seed", config.train.seed, minimum=0, maximum=2**32 - 1)
     _require_type("train.amp", config.train.amp, bool)
+    _require_choice("train.optimizer", config.train.optimizer, {"adamw", "sgd"})
+    _require_choice("train.scheduler", config.train.scheduler, {"none", "step"})
     if config.train.best_metric != "map_50_95":
         raise ConfigError("train.best_metric currently supports only 'map_50_95'")
 
@@ -224,9 +231,9 @@ def _validate_config(config: AppConfig) -> None:
     _require_integer("evaluation.max_detections", config.evaluation.max_detections, minimum=1)
     if config.evaluation.max_detections != 100:
         raise ConfigError("evaluation.max_detections currently supports only 100")
-    _require_type("device", config.device, str)
+    _require_nonempty_string("device", config.device)
     if config.run_name is not None:
-        _require_type("run_name", config.run_name, str)
+        _require_nonempty_string("run_name", config.run_name)
 
 
 def _require_type(path: str, value: object, expected: type[object]) -> None:
@@ -234,16 +241,27 @@ def _require_type(path: str, value: object, expected: type[object]) -> None:
         raise ConfigError(f"{path} must be {expected.__name__}")
 
 
-def _require_integer(path: str, value: object, minimum: int | None = None) -> None:
+def _require_integer(
+    path: str,
+    value: object,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> None:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ConfigError(f"{path} must be an integer")
+    if minimum is not None and maximum is not None and not minimum <= value <= maximum:
+        raise ConfigError(f"{path} must be between {minimum} and {maximum}")
     if minimum is not None and value < minimum:
         raise ConfigError(f"{path} must be at least {minimum}")
+    if maximum is not None and value > maximum:
+        raise ConfigError(f"{path} must be at most {maximum}")
 
 
 def _require_number(path: str, value: object, minimum: float, *, exclusive: bool = False) -> None:
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise ConfigError(f"{path} must be a number")
+    if not math.isfinite(value):
+        raise ConfigError(f"{path} must be finite")
     if (exclusive and value <= minimum) or (not exclusive and value < minimum):
         comparison = "greater than" if exclusive else "at least"
         raise ConfigError(f"{path} must be {comparison} {minimum}")
@@ -252,8 +270,22 @@ def _require_number(path: str, value: object, minimum: float, *, exclusive: bool
 def _require_probability(path: str, value: object) -> None:
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise ConfigError(f"{path} must be a number")
-    if not 0.0 <= value <= 1.0:
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
         raise ConfigError(f"{path} must be between 0.0 and 1.0")
+
+
+def _require_nonempty_string(path: str, value: object) -> None:
+    if not isinstance(value, str):
+        raise ConfigError(f"{path} must be str")
+    if not value.strip():
+        raise ConfigError(f"{path} must not be empty")
+
+
+def _require_choice(path: str, value: object, choices: set[str]) -> None:
+    _require_nonempty_string(path, value)
+    if value not in choices:
+        expected = " or ".join(repr(choice) for choice in sorted(choices))
+        raise ConfigError(f"{path} must be {expected}")
 
 
 def _serialize(value: object) -> Any:

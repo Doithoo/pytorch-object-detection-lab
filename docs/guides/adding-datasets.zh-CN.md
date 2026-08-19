@@ -1,3 +1,48 @@
-# 添加数据集
+# 添加内部数据集提供器
 
-添加校验源标注的 parser，以及生成确定性划分 manifest 与 metadata identity 的准备步骤。实现与 `VocDetectionDataset` 相同的 `(image, target)` 接口和 source image ID；复用同步变换与 `detection_collate`。为无目标、坐标、difficult/crowd、hash 和预览添加离线测试。
+[English](adding-datasets.md) | [数据集契约](../reference/dataset-format.zh-CN.md)
+
+当源数据无法满足当前支持的 VOC 形状目录时，维护者可参考本指南。版本 0.1 只注册 `voc2007`，`data.name` 会拒绝其他值。项目没有稳定的外部提供器或插件接口，因此扩展必须修改内部代码，并承担兼容性责任。
+
+## 保持边界清晰
+
+准备阶段和运行时加载必须分离：
+
+```text
+源文件 -> 完整校验 -> 暂存清单与元数据 -> 原子发布
+准备后的行 -> Dataset -> (浮点 RGB 图像, 目标) -> 列表批处理
+```
+
+提供器必须发布固定的 train、valid、test 成员，拒绝重复和跨划分重叠，并根据源内容、有序类别、坐标规则及划分行生成标识。清单只引用源路径，不复制源数据。准备失败时，已有清单目录必须保持完整。
+
+## 代码职责
+
+1. 在 `src/object_detector/data/` 下加入格式解析和校验；源坐标转换留在解析器中。
+2. 加入准备函数，通过暂存和原子替换写出[数据集格式](../reference/dataset-format.zh-CN.md)规定的结构。
+3. 加入基于清单的 `Dataset`，返回下列标准目标。只有先定义真正的内部注册表或明确的第二提供器分派，才扩展配置与编排逻辑。
+4. 同步更新预检查、检查点标识、评估、示例和双语文档。
+
+标准样本包含 `[0,1]` 范围的 RGB `float32 Tensor[3,H,W]` 图像，以及：
+
+| 字段 | 契约 |
+|---|---|
+| `boxes` | `float32 [N,4]`，零基连续 `xyxy` |
+| `labels` | `int64 [N]`；0 为背景，目标类别从 1 开始 |
+| `image_id` | `int64 [1]`，由源标识稳定生成 |
+| `area` | `float32 [N]`，`(xmax-xmin)*(ymax-ymin)` |
+| `iscrowd` | `int64 [N]` |
+| `difficult` | `bool [N]` |
+
+逐目标字段必须具有相同的 `N`。空目标仍保留 `[0,4]` 和 `[0]` 形状。几何变换必须同步更新图像、检测框、面积和全部对齐字段。`detection_collate` 必须返回列表，以支持不同图像尺寸和目标数量。
+
+## 失败与证据要求
+
+训练前必须拒绝缺失或损坏图像、错误标注、未知类别、非有限或退化框、文件名或尺寸不一致、错误划分和元数据类别数不匹配。困难或拥挤目标的语义必须明确记录，不能静默丢弃。
+
+为解析、清单、数据集、变换、检查、预检查和端到端流程增加针对性测试，覆盖空图像、仅困难目标、稳定标识、源字节变化、原子失败、批处理和模型试运行。执行：
+
+```bash
+uv run pytest tests/test_manifest.py tests/test_dataset.py tests/test_transforms.py tests/test_end_to_end.py -q
+```
+
+能读取一个样本并不代表提供器完成。只有准备可复现、错误输入不会产生部分产物、运行时目标符合检测器契约，而且标识进入运行产物与检查点，扩展才具备完整证据。已经是 VOC 形状的数据应使用[自己的数据](using-your-data.zh-CN.md)路径。

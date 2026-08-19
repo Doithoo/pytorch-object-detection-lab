@@ -83,22 +83,23 @@ def validate_resume_identity(checkpoint: Mapping[str, object], expected: ResumeI
 
 def validate_preprocessing_contract(checkpoint: Mapping[str, object]) -> None:
     value = checkpoint.get("preprocessing")
-    if value is None:
-        return
     if not isinstance(value, Mapping):
-        raise CheckpointCompatibilityError("checkpoint preprocessing contract must be a mapping")
-    mismatches = [key for key, expected in EXPECTED_PREPROCESSING.items() if key in value and value[key] != expected]
-    if mismatches:
-        raise CheckpointCompatibilityError("unsupported preprocessing contract: " + ", ".join(mismatches))
+        raise CheckpointCompatibilityError("checkpoint preprocessing contract must be a complete mapping")
+    if dict(value) != EXPECTED_PREPROCESSING:
+        raise CheckpointCompatibilityError("checkpoint preprocessing contract does not match schema version 1")
 
 
 def build_run_metadata(*, device: torch.device, seed: int) -> dict[str, object]:
+    resolved_device = device
+    if device.type == "cuda" and device.index is None:
+        resolved_device = torch.device("cuda", torch.cuda.current_device())
     return {
         "python": sys.version.split()[0],
         "torch": str(torch.__version__),
         "torchvision": str(torchvision.__version__),
         "platform": platform.platform(),
-        "device": str(device),
+        "device": str(resolved_device),
+        "cuda_device_count": torch.cuda.device_count() if device.type == "cuda" else 0,
         "seed": seed,
         "git_revision": _git_revision(),
     }

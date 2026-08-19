@@ -1,0 +1,34 @@
+data:
+  name: voc2007
+  data_dir: /kaggle/working/data
+  manifest_dir: /kaggle/working/manifests
+  num_workers: 2
+  horizontal_flip: 0.5
+  max_train_samples: null
+  max_valid_samples: null
+  max_test_samples: null
+model:
+  name: fasterrcnn_mobilenet_v3_large_320_fpn
+  weights: imagenet1k_v1
+  expected_num_classes: 21
+  params: {}
+train:
+  epochs: 26
+  batch_size: 4
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0.0005
+  optimizer: sgd
+  scheduler: step
+  seed: 42
+  amp: true
+  grad_clip: 0.0
+  best_metric: map_50_95
+evaluation:
+  score_threshold: 0.05
+  error_score_threshold: 0.5
+  error_iou_threshold: 0.5
+  max_detections: 100
+device: cuda
+output_dir: /kaggle/working/artifacts
+run_name: reference-fasterrcnn

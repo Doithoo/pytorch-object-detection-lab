@@ -1,0 +1,31 @@
+name: Learning question
+description: Ask about a documented object-detection concept or project workflow
+title: "[Question]: "
+labels: [question]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page, example, or command
+      placeholder: docs/tutorial/02-data-and-boxes.md
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: State what you expected and the exact point that is unclear.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant output or tensor shapes
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I read the linked tutorial/reference and searched existing issues.
+          required: true

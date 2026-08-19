@@ -6,11 +6,13 @@ import pytest
 import torch
 
 from object_detector.training.checkpoint import (
+    EXPECTED_PREPROCESSING,
     CheckpointCompatibilityError,
     ResumeIdentity,
     build_run_metadata,
     load_checkpoint,
     save_checkpoint,
+    validate_preprocessing_contract,
     validate_resume_identity,
 )
 
@@ -87,6 +89,16 @@ def test_run_metadata_records_framework_versions() -> None:
     assert isinstance(metadata["torchvision"], str)
 
 
+def test_run_metadata_normalizes_an_implicit_cuda_device_to_the_current_index(monkeypatch) -> None:
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 1)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+
+    metadata = build_run_metadata(device=torch.device("cuda"), seed=42)
+
+    assert metadata["device"] == "cuda:1"
+    assert metadata["cuda_device_count"] == 2
+
+
 def test_checkpoint_loader_does_not_execute_pickle_globals(tmp_path: Path) -> None:
     checkpoint = tmp_path / "malicious.pt"
     marker = tmp_path / "executed.txt"
@@ -96,3 +108,20 @@ def test_checkpoint_loader_does_not_execute_pickle_globals(tmp_path: Path) -> No
         load_checkpoint(checkpoint)
 
     assert not marker.exists()
+
+
+@pytest.mark.parametrize(
+    "checkpoint",
+    [
+        {},
+        {"preprocessing": {"resize_owner": "torchvision_model"}},
+        {"preprocessing": {**EXPECTED_PREPROCESSING, "unexpected": True}},
+    ],
+)
+def test_preprocessing_contract_requires_the_complete_exact_schema(checkpoint: dict[str, object]) -> None:
+    with pytest.raises(CheckpointCompatibilityError, match="preprocessing contract"):
+        validate_preprocessing_contract(checkpoint)
+
+
+def test_preprocessing_contract_accepts_the_expected_schema() -> None:
+    validate_preprocessing_contract({"preprocessing": dict(EXPECTED_PREPROCESSING)})

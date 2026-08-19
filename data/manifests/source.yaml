@@ -1,0 +1,5 @@
+dataset: Pascal VOC 2007
+dataset_root: VOCdevkit/VOC2007
+archives:
+  VOCtrainval_06-Nov-2007.tar: c52e279531787c972589f7e41ab4ae64
+  VOCtest_06-Nov-2007.tar: b6e924de25625d8de591ea690078ad9f

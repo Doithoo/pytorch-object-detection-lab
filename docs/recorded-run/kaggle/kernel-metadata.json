@@ -1,0 +1,16 @@
+{
+  "id": "yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7",
+  "title": "PyTorch Object Detection Lab VOC2007 GPU Run V7",
+  "code_file": "run_kaggle.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

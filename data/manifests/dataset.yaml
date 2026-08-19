@@ -1,0 +1,54 @@
+name: voc2007
+dataset_root: VOCdevkit/VOC2007
+class_names:
+- aeroplane
+- bicycle
+- bird
+- boat
+- bottle
+- bus
+- car
+- cat
+- chair
+- cow
+- diningtable
+- dog
+- horse
+- motorbike
+- person
+- pottedplant
+- sheep
+- sofa
+- train
+- tvmonitor
+label_by_name:
+  aeroplane: 1
+  bicycle: 2
+  bird: 3
+  boat: 4
+  bottle: 5
+  bus: 6
+  car: 7
+  cat: 8
+  chair: 9
+  cow: 10
+  diningtable: 11
+  dog: 12
+  horse: 13
+  motorbike: 14
+  person: 15
+  pottedplant: 16
+  sheep: 17
+  sofa: 18
+  train: 19
+  tvmonitor: 20
+split_counts:
+  train: 2501
+  valid: 2510
+  test: 4952
+split_hashes:
+  train: 0db09d4d95248aebbd6e17f1ee202d13506cc081fe554d913344c7350cc22584
+  valid: 62630ac366ecad7f6dd2f51b9de501f66fd7e8d57d2bc000fdbd6f7db065540a
+  test: f21265f3e1a75a4c65e6e19f4c02b98e5d0b7b0c573dd36f755ca5623117c0e5
+identity: b9bdc2604322c07f26c9a0135a063c7702b0dfb261171401076cf6733cfdb5b7
+coordinate_convention: zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries

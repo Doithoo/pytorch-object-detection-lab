@@ -11,6 +11,16 @@ requires-python = ">=3.10,<3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Yashowhoo" }]
+keywords = ["pytorch", "object-detection", "computer-vision", "pascal-voc", "education"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "torch>=2.0,<3",
     "torchvision>=0.15,<1",
@@ -29,12 +39,16 @@ dev = [
     "types-PyYAML>=6,<7",
     "pre-commit>=3,<5",
     "build>=1.2,<2",
+    "setuptools>=77,<82",
+    "tomli>=2,<3; python_version < '3.11'",
     "twine>=5,<7",
     "matplotlib>=3.6,<4",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Repository = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+Documentation = "https://github.com/Yashowhoo/pytorch-object-detection-lab#readme"
 Source = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
 Issues = "https://github.com/Yashowhoo/pytorch-object-detection-lab/issues"
 

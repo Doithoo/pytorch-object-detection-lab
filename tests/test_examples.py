@@ -16,6 +16,7 @@ EXAMPLES = [
         start=1,
     )
 ]
+EXAMPLES.append(ROOT / "examples" / "03_model_contract.py")
 
 
 @pytest.mark.parametrize("example", EXAMPLES, ids=lambda path: path.name)

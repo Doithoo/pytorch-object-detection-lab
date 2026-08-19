@@ -1,170 +1,126 @@
-# Tutorial 05: Metrics, Error Evidence, and Inference
+# Tutorial 05: Read Evaluation Results and Predictions
 
-[Simplified Chinese](05-evaluation-and-inference.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](05-evaluation-and-inference.zh-CN.md) | [Tutorial index](README.md)
 
-You need a project checkpoint from Chapter 04. Dataset evaluation also needs the
-prepared manifests and source data whose identity matches the checkpoint.
-Single-image or directory prediction needs only the checkpoint and local images.
+You can learn this chapter from the saved Kaggle v7 result without first
+downloading the 145 MB checkpoint. Start in
+[`../recorded-run/evaluation`](../recorded-run/evaluation).
 
-## IoU thresholds and score thresholds answer different questions
+## Start with the summary
 
-IoU measures geometric overlap. A match threshold such as `0.5` asks whether a
-same-class predicted box overlaps a target enough to count as a match. A score
-threshold asks whether model confidence is high enough to serialize, display, or
-analyze a prediction. Raising the score threshold can remove both false
-positives and true positives; it does not improve the geometry of remaining
-boxes.
+[`evaluation.json`](../recorded-run/evaluation/evaluation.json) records the
+evaluation of all 4,952 VOC 2007 test images:
 
-The evaluation command's `--score-threshold` filters serialized predictions and
-rendered evidence. It does not filter predictions sent to the AP/AR backend. The
-separate checkpoint configuration values `error_score_threshold` and
-`error_iou_threshold` control error classification.
+| Metric | Kaggle v7 result |
+|---|---:|
+| `map_50_95` | **0.322312** |
+| `map_50` | **0.609917** |
+| `map_75` | 0.302681 |
+| `mar_100` | 0.415008 |
 
-## Read AP and AR as curves, not one box decision
+These are unitless values from 0 to 1, not percentages. `map_50_95` requires
+both correct classes and increasingly accurate boxes, so it is normally lower
+than `map_50`, which uses only IoU 0.5.
 
-- `map_50_95` averages Average Precision over IoU thresholds 0.50 through 0.95
-  in increments of 0.05. It rewards both classification and tighter localization.
-- `map_50` and `map_75` report AP at fixed IoU thresholds.
-- `mar_1`, `mar_10`, and `mar_100` report Average Recall with at most 1, 10, or
-  100 detections per image.
-- `per_class.csv` reports `map_50_95` and `mar_100` for represented foreground
-  classes.
+## What mAP measures
 
-AP summarizes a precision-recall curve formed by score-ranked detections. AR asks
-how much target evidence is recovered under a detection cap. Neither number says
-why an individual image failed, so the evaluator writes both aggregates and
-image-level evidence. Backend negative sentinel values are normalized to zero;
-serialized JSON/CSV values are rounded to six decimals.
+A prediction must have the same class as a target and reach the selected IoU to
+match it. IoU is the intersection area of two boxes divided by their union.
 
-## Difficult targets do not become ordinary errors
+- `map_50`: AP at IoU 0.5.
+- `map_75`: AP at the stricter IoU 0.75.
+- `map_50_95`: AP averaged over 0.50, 0.55, ..., 0.95.
+- `mar_100`: average recall with at most 100 predictions per image.
 
-Validation and test targets retain VOC difficult objects as `iscrowd=1`.
-Ordinary target counts exclude them. During error analysis, a same-class
-prediction that overlaps only a difficult target at the configured IoU is marked
-`ignored`, not a false positive, and difficult targets are not reported as
-missed. This is why dropping `iscrowd` before evaluation changes the meaning of
-the report.
+AP combines precision and recall across confidence thresholds, so one image or
+one score threshold cannot replace it.
 
-## Evaluate validation while making choices
+## Inspect differences between classes
 
-While choosing epochs, thresholds, models, or hyperparameters, evaluate the
-validation split:
+Open [`per_class.csv`](../recorded-run/evaluation/per_class.csv). It lists
+`map_50_95` and `mar_100` for each of the 20 VOC classes. Differences can come
+from object size, occlusion, appearance variation, data volume, and class
+confusion.
 
-```bash
-uv run detect evaluate --checkpoint artifacts/first-detector/best.pt --split valid --output-dir artifacts/first-detector/evaluation-valid --device cpu
-```
+Find a few strong and weak classes, then look for concrete causes in
+`errors.csv` and the images. A class AP alone does not show that the model
+"understands" or "does not understand" an object.
 
-Expected stdout prints the output directory. The command rejects a checkpoint
-whose manifest identity differs from current prepared data, rebuilds the model
-with `weights=none`, loads saved state, and atomically writes:
+## Move from error rows back to images
 
-```text
-evaluation.json
-predictions.json
-per_class.csv
-errors.csv
-visualizations/summary.png
-visualizations/missed-*.png              when missed cases exist
-visualizations/false_positive-*.png      when false positives exist
-```
+[`errors.csv`](../recorded-run/evaluation/errors.csv) contains four record types:
 
-`evaluation.json` records metrics, thresholds, backend versions, split, manifest
-identity, and checkpoint SHA-256. `predictions.json` is the score-filtered
-per-image output. `errors.csv` identifies `missed`, `false_positive`,
-`localization`, and `ignored` cases with class, score, IoU, and box.
+- `missed`: an ordinary target had no qualifying prediction.
+- `false_positive`: a prediction did not match an ordinary target of its class.
+- `localization`: the class may be right, but overlap did not reach the threshold.
+- `ignored`: the prediction only matched a difficult object and is not counted
+  as an ordinary false positive.
 
-The output directory must be empty or absent unless `--overwrite` is explicit.
-Do not add `--overwrite` until existing evidence has been preserved.
+Start with the real summary image:
 
-## Return from rows to images
+![Targets and predictions for test image 000001 from the Kaggle model](../recorded-run/evaluation/visualizations/summary.png)
 
-Start with `visualizations/summary.png`, then open ranked missed and
-false-positive images beside `errors.csv`. Error analysis first keeps predictions
-at or above the error score threshold and processes them from highest to lowest
-score. Each prediction considers only unmatched ordinary targets of the same
-class. IoU at or above the error IoU threshold consumes one ordinary target as a
-match. Otherwise, a sufficient same-class difficult overlap is `ignored`; a
-positive overlap with an unmatched ordinary target is `localization`; and the
-remaining prediction is `false_positive`. A consumed ordinary target is no
-longer a candidate, so a duplicate prediction can become a false positive. After
-all predictions, unmatched ordinary targets become `missed`; difficult targets
-never do.
+Green boxes are ordinary targets, dashed orange boxes are difficult targets,
+and blue boxes are predictions. Then inspect:
 
-Green boxes are ordinary targets, dashed orange boxes are difficult targets, and
-blue boxes are predictions. The legend is demonstrated in this synthetic
-teaching image, not in a claimed model result:
+- [A false-positive example](../recorded-run/evaluation/visualizations/false_positive-01-009040.png)
+- [A missed-object example](../recorded-run/evaluation/visualizations/missed-01-006500.png)
 
-![Synthetic detection error analysis](../assets/detection-error-analysis.png)
+One image cannot represent the whole test set, but it can suggest the next
+question: small object, occlusion, class confusion, poor localization, or a
+duplicate prediction? Return to the CSV for its class, score, and IoU.
 
-Use the CSV to find a case and the PNG to form a hypothesis. A metric alone
-cannot distinguish small-object misses, class confusion, poor localization, or
-duplicate/background predictions.
+## Why difficult objects are handled separately
 
-## Predict from the checkpoint without YAML or dataset manifests
+VOC difficult targets are hard to identify or localize reliably. They are not
+counted as ordinary targets and are not marked as missed. A prediction that only
+matches a difficult target is `ignored`, not `false_positive`.
 
-For one local image:
+This is why the data path must retain `difficult` / `iscrowd` information.
+
+## Validation and test have different jobs
+
+Use validation during training to:
+
+- Compare epochs.
+- Select `best.pt`.
+- Adjust models and hyperparameters.
+
+Use test once after those choices are fixed. The published run reached its best
+validation metric at epoch 18 and evaluated test only after all 26 epochs were
+complete. Repeatedly changing the model after looking at test removes that
+independence.
+
+## Predict with your downloaded checkpoint
+
+After downloading `best.pt` from Kaggle, predict one local image:
 
 ```bash
-uv run detect predict --checkpoint artifacts/first-detector/best.pt --image docs/assets/detection-target-anatomy.png --output-dir artifacts/prediction --device cpu --score-threshold 0.5
+uv run detect predict --checkpoint kaggle-output/reference-fasterrcnn/best.pt --image image.jpg --output-dir artifacts/prediction --device cpu --score-threshold 0.5
 ```
 
-Expected outputs are `artifacts/prediction/detection-target-anatomy.json` and
-`artifacts/prediction/detection-target-anatomy.png`. The input is a synthetic
-teaching diagram; running a detector on it verifies checkpoint restoration,
-inference, and artifact writing, not detection quality. The JSON contains image
-dimensions, manifest identity, and every detection at or above the score
-threshold. `--display-limit` limits boxes drawn in the PNG after score filtering;
-it does not truncate the JSON detections.
+The output directory contains JSON and PNG files with the same stem. JSON keeps
+floating-point boxes, classes, and scores; PNG is convenient to inspect.
+Raising `--score-threshold` hides more low-confidence predictions, but it does
+not retrain the model or improve box locations.
 
-For a directory, use `--input-dir` instead of `--image`. The command writes
-`predictions.json` plus a `visualizations` tree and records unreadable images as
-errors while processing supported `.jpg`, `.jpeg`, and `.png` files. Prediction
-reconstructs model architecture and ordered class names from the checkpoint with
-`weights=none`; no config YAML or VOC files are needed.
-
-## Keep validation and test roles separate
-
-Use validation to choose the checkpoint and operating thresholds. Once those
-choices are fixed, one final official-protocol report may evaluate test:
+Predict a directory with:
 
 ```bash
-uv run detect evaluate --checkpoint artifacts/first-detector/best.pt --split test --output-dir artifacts/first-detector/evaluation-test --device cpu
+uv run detect predict --checkpoint kaggle-output/reference-fasterrcnn/best.pt --input-dir images --output-dir artifacts/predictions --device cpu --score-threshold 0.5
 ```
 
-For the bounded learning checkpoint, this still evaluates only the configured
-test limit and is not a complete VOC score. Repeatedly looking at test and then
-changing the model turns test into another validation set.
+Prediction needs only the checkpoint and images, not VOC data. CPU inference
+works, although it is slower than GPU inference.
 
-## Compare compatible runs without erasing context
+## Re-evaluate your Kaggle result
 
-After two runs on the same immutable manifest identity:
+The Kaggle runner already evaluates test. You only need to run evaluation again
+when changing visualization thresholds or regenerating
+files in an environment with matching VOC data. See the
+[metrics reference](../reference/metrics.md) for all options.
 
-```bash
-uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95 --output artifacts/comparison.csv
-```
-
-Expected stdout names the metric and shared manifest identity, ranks each run by
-its best metric row, and lists semantic configuration differences. The report
-intentionally excludes the operational fields `run_name`, `output_dir`, `device`,
-and `data.num_workers`. Loss metrics are ordered lower-first; other metrics
-higher-first. The command rejects missing artifacts/columns, non-finite values,
-differing manifest identities, and an existing output CSV. A ranking compares
-these recorded runs only; it does not prove that one configuration is universally
-better.
-
-## Common failure boundaries
-
-- Checkpoint and prepared-data identities differ: evaluation stops; prediction
-  may still run because it does not claim dataset metrics.
-- `evaluation-*` already contains files: choose a new directory or deliberately
-  preserve and overwrite it.
-- Metrics look unchanged after raising `--score-threshold`: expected, because
-  that CLI threshold is not applied to the AP/AR backend.
-- Difficult matches appear as ordinary false positives: verify `iscrowd` was
-  preserved through the target path.
-- JSON has more detections than the PNG: `--display-limit` is visualization-only.
-- A bounded test score is presented as complete VOC evidence: the evidence scope
-  is wrong, regardless of the numeric value.
-
-Return to the [learning path](learning-path.md) for a complete workflow audit, or
-use the [metrics reference](../reference/metrics.md) when reading report fields.
+You have now followed the main route from boxes through Kaggle training to
+error analysis. Continue with [comparing configurations](../guides/experiments.md),
+[changing models](../guides/using-models.md), or
+[using your own data](../guides/using-your-data.md).

@@ -1,37 +1,43 @@
-# Tutorial 04: One Update, Then a Deliberate Run
+# Tutorial 04: Train Faster R-CNN on Kaggle
 
-[Simplified Chinese](04-training.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](04-training.zh-CN.md) | [Tutorial index](README.md)
 
-You need prepared `data/manifests`, matching source images under `data/raw`, and
-the model/data contracts from Tutorials 00-03. Begin on CPU unless a CUDA or MPS
-dry run has already passed.
+This chapter combines the earlier data and model ideas in one complete run.
+Use a Kaggle T4 for the recommended path; full VOC training is not a good use
+of an ordinary CPU.
 
-## Read one optimizer step in isolation
+## What this run uses
+
+The reference configuration is
+[`../../configs/reference_fasterrcnn.yaml`](../../configs/reference_fasterrcnn.yaml):
+
+- Faster R-CNN MobileNet V3 Large 320 FPN.
+- ImageNet1K V1 backbone weights.
+- Official VOC 2007 train / valid / test splits.
+- 26 epochs with SGD and a step learning-rate schedule.
+- Validation `map_50_95` to select `best.pt`.
+
+The Kaggle runner changes the device to CUDA, enables AMP, uses two data
+workers, and places paths under `/kaggle/working`. The model structure and
+optimization settings remain the same.
+
+## Submit training
+
+Complete sign-in and account-name setup in the [Kaggle guide](../guides/kaggle.md),
+then run:
 
 ```bash
-uv run python examples/04_minimal_training_loop.py --lr 0.1
+kaggle kernels push -p docs/recorded-run/kaggle
 ```
 
-Expected output is `scale: 1.0000 -> 0.7500`. The fake detector makes the update
-visible, but it has only one parameter and two synthetic losses. Its literal
-order is `forward -> zero_grad -> sum -> backward -> step`. Clearing gradients
-must happen before `backward`; doing so after this simple forward is valid because
-the forward pass has not accumulated parameter gradients.
+Confirm a T4 or newer GPU and enabled Internet on the web page. The runner
+automatically downloads and prepares data and performs a one-batch dry run; you
+do not run the local preparation commands separately on Kaggle.
 
-The production `dry_run` clears gradients before its forward pass, then sums the
-losses, runs backward, and steps the optimizer. It also moves each image and
-target dictionary to the selected device, checks every returned loss is a finite
-scalar, and optionally clips gradients. Full epochs average losses by image count.
+## What the dry run checks
 
-## Dry run: prove one integrated update
-
-```bash
-uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
-```
-
-The command loads one real training batch, runs the configured torchvision model
-in train mode, sums its losses, backpropagates, and updates parameters once.
-Expected stdout includes:
+Before the first epoch, the runner reads one real VOC batch and completes one
+parameter update. Diagnostics include:
 
 ```text
 image_shapes=((3, H1, W1), (3, H2, W2))
@@ -44,94 +50,92 @@ loss_rpn_box_reg=<finite value>
 dry-run OK
 ```
 
-The actual shapes, counts, and values depend on the selected manifest rows and
-model state. `dry-run OK` proves that loading, collation, model forward,
-backward, and optimizer update connect for one batch. It writes no normal run
-directory and does not measure validation quality.
+`dry-run OK` means data reached the model, losses backpropagated, and the
+optimizer updated parameters. It is not a training result; training begins with
+the epoch logs that follow.
 
-## Bounded learning run: prove the artifact path
+## Read the epoch log
 
-`configs/learning_minimal.yaml` limits train/valid/test to 32/16/16 samples, uses
-two epochs, random weights, and zero loader workers. Give the run an explicit
-name:
+Each epoch has two phases:
 
-```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name first-detector --device cpu
+1. train: compute losses, backpropagate, and update the model.
+2. valid: keep parameters fixed and compute validation mAP and recall.
+
+The runner prints a heartbeat every 60 seconds during long training or
+evaluation phases. If heartbeats continue, do not stop or resubmit. The complete
+v7 run spent 3,025.660 seconds, about 50 minutes, training.
+
+Each epoch is also written to `metrics.csv`. Start with:
+
+| Column | Meaning |
+|---|---|
+| `epoch` | Completed epoch |
+| `loss_total` | Sum of the four training losses |
+| `valid_map_50_95` | Main validation metric for checkpoint selection |
+| `valid_map_50` | Validation AP at IoU 0.5 |
+| `learning_rate` | Current learning rate |
+
+Loss is the optimization objective and mAP measures validation detections. They
+do not have to rise or fall together.
+
+## Why both best.pt and last.pt are saved
+
+- `best.pt`: the epoch with the highest validation `map_50_95` so far, used for
+  final evaluation and prediction.
+- `last.pt`: the latest completed epoch, including optimizer, scheduler, and
+  random state needed to resume.
+
+The published run reached its best validation `map_50_95 = 0.313245` at epoch
+18, then completed the planned 26 epochs. Final test evaluation used epoch 18
+`best.pt`, not epoch 26 `last.pt`.
+
+## What appears after training
+
+`artifacts/reference-fasterrcnn/` contains:
+
+```text
+config.yaml
+run.yaml
+metrics.csv
+best.pt
+last.pt
+evaluation/
 ```
 
-On success stdout prints `artifacts/first-detector`. Inspect its files in this
-order:
+`config.yaml` is the actual run configuration, `run.yaml` records device, data,
+and versions, and `metrics.csv` is the complete history. Do not download only
+the checkpoint; the small text files explain how it was produced.
 
-1. `config.yaml`: the complete resolved recipe, including sample limits.
-2. `run.yaml`: environment, device, seed, manifest identity, split hashes, and
-   ordered class names.
-3. `metrics.csv`: one row per completed epoch, with `loss_total`, the four named
-   detector losses, and `valid_` AP/AR/count columns.
-4. `best.pt`: the epoch that strictly improved validation `map_50_95`.
-5. `last.pt`: the most recently completed epoch, including optimizer, scheduler,
-   history, and RNG state for resume.
+## Optional: one small local check
 
-For a fresh run, any existing resolved run directory is rejected, even when it
-is empty. Checkpoints and text artifacts are published atomically so a finished
-file does not contain a partially written replacement.
-
-This bounded run proves the integrated learning and artifact workflow. Its
-metrics describe only the bounded samples, epochs, seed, and configuration. They
-are not a complete VOC benchmark.
-
-## Resume without changing experiment semantics
-
-To extend the same bounded run from two to three epochs:
+With local VOC data but no GPU, check one batch and one update:
 
 ```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name first-detector --set train.epochs 3 --resume artifacts/first-detector/last.pt --device cpu
+uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
 ```
 
-The command above resumes the existing run in place from its current `last.pt`.
-You may instead select a new, empty run directory; cross-directory resume carries
-forward the compatible sibling `best.pt`. When an in-place `last.pt` already
-exists, resuming from `best.pt` or an older copy is rejected to avoid overwriting
-newer history. If `last.pt` is missing, the matching `best.pt` may recover that
-same directory; no renamed or copied checkpoint is accepted in place. Resume
-also requires finite values for the configured validation metric and a
-`best_metric` equal to their full-history maximum, plus the same model, classes,
-preprocessing contract, manifest identity, and semantic configuration.
-Operational fields such as total epochs, workers, and device may change, but the
-requested epoch count must exceed the saved epoch.
+`learning_minimal.yaml` uses random weights and a few samples. It checks the
+code path and is not a training result.
 
-## Full training is a separate evidence level
+## Optional: complete training on a local GPU
 
-`configs/reference_fasterrcnn.yaml` removes sample limits, requests 26 epochs,
-uses the official prepared splits, and selects `imagenet1k_v1` backbone weights.
-Before considering it, verify the complete dataset identity, device capacity,
-weight cache/network policy, output storage, and
-[recorded-run evidence gate](../recorded-run/README.md).
-
-The corresponding command is:
+If you have a compatible CUDA GPU, full VOC data, and network access for the
+backbone weight, run:
 
 ```bash
-uv run detect train --config configs/reference_fasterrcnn.yaml
+uv run detect train --config configs/reference_fasterrcnn.yaml --device cuda
 ```
 
-This is not a quick tutorial command, and listing it is not evidence that it has
-been executed. A separate [recorded Kaggle run](../recorded-run/README.md)
-preserves one real 26-epoch execution, including its resolved CUDA/AMP config,
-runtime, validation selection, test result, checkpoint hash, and images.
+A new run needs an output directory that does not already exist. To continue an
+interrupted run, use `last.pt`:
 
-## Common failure boundaries
+```bash
+uv run detect train --config configs/reference_fasterrcnn.yaml --resume artifacts/reference-fasterrcnn/last.pt --device cuda
+```
 
-- Preflight reports missing manifests, class-count mismatch, unavailable device,
-  or unwritable output: fix that boundary before model construction.
-- A pretrained-weight notice appears: the selected model may need network access
-  because the expected cache file is absent.
-- A loss is NaN or infinite: the trainer reports the loss name and image IDs;
-  inspect those samples before changing optimization settings.
-- `best.pt` differs from `last.pt`: this is normal when the final validation AP
-  did not strictly improve.
-- A resume config changes batch size, optimizer, learning rate, augmentation, or
-  sample limits: the trainer rejects changed semantics; start a new run.
-- A two-epoch bounded metric looks high or low: it is still bounded evidence and
-  cannot be promoted to a full VOC claim.
+The model, data, and settings that define the training must match the
+checkpoint. See the [checkpoint reference](../reference/checkpoint-schema.md)
+for the complete field list.
 
-Continue to [Tutorial 05](05-evaluation-and-inference.md) to evaluate a chosen
-checkpoint, inspect error evidence, and run checkpoint-only prediction.
+Continue to [evaluation and prediction](05-evaluation-and-inference.md) to
+analyze what the real Kaggle model gets right and wrong.

@@ -1,138 +1,93 @@
-# Tutorial 03: Faster R-CNN as a Tensor Pipeline
+# Tutorial 03: How Faster R-CNN Finds Objects
 
-[Simplified Chinese](03-faster-rcnn.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](03-faster-rcnn.zh-CN.md) | [Tutorial index](README.md)
 
-Prerequisites are the list-based batch and xyxy target contract from Tutorials
-00 and 02. This chapter uses random synthetic input and `weights=none`, so it
-does not need VOC data, a checkpoint, or network access. Its goal is to explain
-responsibilities and mode-dependent APIs, not to reproduce torchvision internals.
+Faster R-CNN is a two-stage detector. It first finds regions that may contain
+objects, then decides what each region contains and refines its box. These two
+steps explain the four losses in the training log.
 
-## The detector owns padding and resize
+## Why the input is a list
 
-The caller passes `list[Tensor[3, Hi, Wi]]`. Torchvision's generalized detector
-transform normalizes and resizes each image, then pads them into an internal
-image-list tensor `[B, 3, Hpad, Wpad]` while retaining each resized image size.
-That metadata is needed to map final boxes back to the caller's coordinates.
-
-The target list remains aligned one-for-one with the images. During training,
-each target supplies foreground boxes `[Ni, 4]` and labels `[Ni]`; during
-evaluation, targets are not passed.
-
-## Backbone and FPN: pixels become feature maps
-
-The backbone turns the padded image tensor into spatial feature maps. A Feature
-Pyramid Network (FPN) combines deep semantic information with finer spatial
-resolution and exposes several levels, conceptually:
+Images in one batch can have different sizes, so the model receives:
 
 ```text
-image list [B, 3, Hpad, Wpad]
-    -> backbone + FPN
-feature level k [B, C, Hk, Wk], for several scales k
+images  = [Tensor[3, H1, W1], Tensor[3, H2, W2], ...]
+targets = [{boxes, labels, ...}, {boxes, labels, ...}, ...]
 ```
 
-Small objects can use a finer level; larger objects can use a coarser one. These
-features are not boxes and do not yet carry final VOC class decisions.
+Torchvision resizes, normalizes, and pads images inside the model, then maps
+output boxes back to the original image sizes. The caller does not stretch
+every image to one fixed shape first.
 
-## RPN: feature maps become class-agnostic proposals
+## Stage one: the RPN proposes regions
 
-The Region Proposal Network (RPN) evaluates anchors across FPN levels. For each
-anchor it predicts objectness and a box adjustment. After decoding, clipping,
-ranking, and suppression, the next stage receives a variable number of proposal
-boxes per image, each shaped `[Ki, 4]`.
+The backbone and FPN convert an image into feature maps at several scales. The
+Region Proposal Network (RPN) searches those features for regions that may
+contain objects. It only asks whether a region looks like an object; it does not
+yet distinguish person, dog, or another VOC class.
 
-The RPN contributes two training values:
+The RPN produces two training losses:
 
-- `loss_objectness`: whether sampled anchors contain an object rather than
-  background.
-- `loss_rpn_box_reg`: how well positive anchors are adjusted toward targets.
+- `loss_objectness`: object versus background for proposed regions.
+- `loss_rpn_box_reg`: how proposal boxes should move and resize.
 
-RPN proposals are class-agnostic. Calling them `person` or `dog` at this stage
-mixes responsibilities between the proposal and ROI heads.
+## Stage two: the ROI head classifies and refines
 
-## ROI heads: proposals become class and box predictions
+ROI Align extracts a fixed-size feature for each proposed region. The ROI head
+chooses a class and refines the box. It produces two more losses:
 
-ROI Align samples a fixed spatial feature for each proposal from the appropriate
-FPN level. The box head converts those features into class logits, including a
-background class, and class-specific box adjustments. Per-image postprocessing
-then returns a variable number of detections:
+- `loss_classifier`: background and object-class classification.
+- `loss_box_reg`: final bounding-box adjustment.
 
-```text
-prediction["boxes"]   float32 [M, 4]
-prediction["labels"]  int64   [M]
-prediction["scores"]  float32 [M]
-```
+The project adds the four losses into `loss_total` for backpropagation and
+logging. Values vary from batch to batch; one smaller loss by itself does not
+prove that a model is better.
 
-The ROI heads contribute the other two training values:
+## Training and prediction return different values
 
-- `loss_classifier`: foreground/background and object-class classification.
-- `loss_box_reg`: final box refinement for positive ROI samples.
-
-For Faster R-CNN, the exact four torchvision loss keys are therefore
-`loss_classifier`, `loss_box_reg`, `loss_objectness`, and `loss_rpn_box_reg`.
-The project sums them into `loss_total` for backpropagation and logging. Their
-numeric values depend on initialization, inputs, and device; this tutorial makes
-no expected-loss claim.
-
-## Train mode and eval mode are different APIs
-
-Torchvision detection models change both accepted inputs and returned values:
-
-| Mode | Call | Return |
+| State | Call | Return value |
 |---|---|---|
-| training | `model(images, targets)` | dictionary of scalar loss tensors |
-| evaluation | `model(images)` under inference mode | one prediction dictionary per image |
+| Training | `model(images, targets)` | Four losses |
+| Evaluation/prediction | `model(images)` | `boxes`, `labels`, and `scores` for each image |
 
-Run the real maintained model contract:
+You can inspect this behavior with a randomly initialized model:
 
 ```bash
 uv run python examples/03_model_contract.py
 ```
 
-Expected output lists the four training keys above and evaluation keys
-`boxes`, `labels`, and `scores`. The command constructs
-`fasterrcnn_mobilenet_v3_large_320_fpn` with random weights. It performs forward
-passes only, learns nothing, and publishes no score.
+The example only performs forward passes. It does not train or produce a model
+score. It prints training loss names, then prediction fields.
 
-`examples/02_detection_batch.py` shows the exact list container delivered to
-both modes:
+The small variable-size batch example is:
 
 ```bash
 uv run python examples/02_detection_batch.py
 ```
 
-Expected shapes remain `(3, 16, 20)` and `(3, 12, 24)` before the model-owned
-transform. The model may resize and pad them internally; that does not change the
-dataset's coordinate convention.
+## What happens in one parameter update
 
-## From four losses to one update
-
-One production optimization step is:
+The core training order is:
 
 ```text
-model.train()
-optimizer.zero_grad(set_to_none=True)
-losses = model(images, targets)
-loss_total = sum(losses.values())
-loss_total.backward()
-optimizer.step()
+clear old gradients
+-> compute four losses
+-> sum them into loss_total
+-> backpropagate
+-> update parameters with the optimizer
 ```
 
-Chapter 04 runs this path against prepared data. The tiny
-`examples/04_minimal_training_loop.py` isolates the mechanics with a fake
-two-loss detector; do not mistake its loss dictionary for Faster R-CNN's exact
-four-loss contract.
+The Kaggle runner performs one-batch dry run to confirm that this path works
+before beginning 26 epochs. Losses in the log come from the torchvision model;
+they are not scores invented by this project.
 
-## Common failure boundaries
+## Common points of confusion
 
-- Calling a train-mode detector without targets: the training API is incomplete.
-- Passing targets in eval mode and expecting losses: eval mode returns
-  predictions instead.
-- Passing one stacked tensor instead of a list: the public detection contract is
-  violated and original sizes become ambiguous.
-- Using label `0` for an object: it is interpreted as background.
-- Treating RPN objectness as VOC classification: the RPN is class-agnostic.
-- Interpreting finite random-weight losses or prediction keys as learned quality:
-  only the software contract was exercised.
+- Object labels start at `1`; `0` is reserved for background.
+- The RPN proposes regions but does not predict final VOC classes.
+- Training needs targets; prediction does not.
+- Finite losses from random weights do not mean the model has learned.
+- A prediction `score` is not IoU or mAP.
 
-Continue to [Tutorial 04](04-training.md) to perform one update, then distinguish
-a dry run, a bounded learning run, and a full experiment.
+Continue to [training](04-training.md) to connect these losses to the Kaggle log
+and `metrics.csv`.

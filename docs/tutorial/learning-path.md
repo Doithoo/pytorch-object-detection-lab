@@ -1,150 +1,97 @@
-# Object Detection Learning Path
+# From Bounding Boxes to Kaggle Training
 
-[Simplified Chinese](learning-path.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](learning-path.zh-CN.md) | [Tutorial index](README.md)
 
-This route is for a learner who knows basic tensors and gradients but has not yet
-completed a two-stage object-detection workflow. Move through
-`download -> prepare -> inspect -> dry run -> train -> evaluate -> predict` and
-state what each stage proves before continuing.
+This route is for readers who know basic Python and have seen tensors and
+gradients, but have not trained an object detector end to end. You do not need
+a local GPU. The Kaggle runner performs the complete sequence:
 
-## 0. Establish the locked environment
-
-```bash
-uv sync --locked --extra dev
-uv run detect --version
-uv run detect show-config --config configs/learning_minimal.yaml
+```text
+download -> prepare -> inspect -> dry run -> train -> evaluate -> predict
 ```
 
-Expected version output is `0.1.0`. The resolved config shows random weights,
-two epochs, sample limits of 32/16/16, and automatic device selection. If these
-commands fail, use [Tutorial 01](01-environment.md) before touching data or GPU
-settings.
+## 1. Know what the model must produce
 
-Completion check: explain why `weights: none` is an offline model-construction
-policy but not a claim that VOC is installed.
+Object detection answers both "what is in the image?" and "where is it?" A
+prediction normally contains:
 
-## 1. Identify detection tensors and lists
+- `boxes`: xyxy bounding boxes with shape `[N, 4]`.
+- `labels`: one class index for each box.
+- `scores`: the model confidence for each prediction.
 
-```bash
-uv run python examples/01_boxes_and_labels.py
-uv run python examples/02_detection_batch.py
-```
+After [detection basics](00-basics.md), you should be able to read one target.
+There is no need to memorize many formulas before continuing.
 
-Predict the areas `192` and `180` before reading example 01 output. In example
-02, explain why two images with shapes `(3,16,20)` and `(3,12,24)` remain a list,
-why targets form a parallel list, why boxes are `[N,4]`, and why object labels
-start at 1. Read [Tutorial 00](00-basics.md) if any answer is unclear.
+## 2. Meet the training data
 
-Completion check: write a valid empty target shape and compute the IoU of two
-partially overlapping boxes by hand.
+The project uses Pascal VOC 2007: 2,501 training images, 2,510 validation
+images, and 4,952 test images across 20 object classes. The Kaggle runner
+downloads the official archives and creates the manifests used for training.
 
-## 2. Build a trusted prepared-data boundary
+The [VOC data chapter](02-data-and-boxes.md) explains why XML coordinates are
+converted and why `difficult` objects are handled differently during
+evaluation. On a first read, focus on the meaning rather than manifest hashes
+or internal file-writing details.
 
-```bash
-uv run python scripts/download_data.py --data-dir data/raw
-uv run detect prepare-data --data-dir data/raw --manifest-dir data/manifests
-uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split valid --limit 16
-uv run python scripts/preview_dataset.py data/manifests --data-dir data/raw --split valid --limit 4 --output artifacts/dataset_preview.png
-```
+## 3. Understand the two Faster R-CNN outputs
 
-The first command is the network boundary and verifies the two official VOC MD5
-checksums. Preparation validates and atomically publishes fixed manifests plus a
-content-derived identity. Inspection prints structured counts/ranges. Preview
-renders whichever ordinary and difficult annotations occur in the first selected
-rows; difficult boxes appear only when those rows contain them. Treat the
-manifest identity as immutable for all runs you compare. Read
-[Tutorial 02](02-data-and-boxes.md).
+During training, the model receives images and targets and returns four losses:
+classification, box regression, RPN classification, and RPN box regression.
+During evaluation, it receives images and returns boxes, labels, and scores.
 
-Completion check: explain `(xmin-1, ymin-1, xmax, ymax)`, identify the labeled
-difficult target in the explicitly synthetic
-[target anatomy diagram](../assets/detection-target-anatomy.png), and distinguish
-inspected-image counts from full-split counts.
+The [Faster R-CNN chapter](03-faster-rcnn.md) connects the RPN and ROI head.
+Start with the two ideas of proposing regions and then classifying and refining
+them.
 
-## 3. Cross the real model-mode boundary
+## 4. Submit training to Kaggle
 
-```bash
-uv run python examples/03_model_contract.py
-```
+Follow the [Kaggle guide](../guides/kaggle.md) to:
 
-Expected train-mode keys are `loss_classifier`, `loss_box_reg`,
-`loss_objectness`, and `loss_rpn_box_reg`; eval-mode keys are `boxes`, `labels`,
-and `scores`. The example uses random weights and synthetic input. It proves the
-torchvision contract but performs no learning. Follow the tensor responsibilities
-in [Tutorial 03](03-faster-rcnn.md).
+1. Install the Kaggle CLI and sign in.
+2. Replace the account name in the kernel metadata.
+3. Submit the runner and confirm a T4-or-newer GPU and Internet on the web page.
+4. Wait for `COMPLETE`, then download only `artifacts/.*`.
 
-Completion check: trace image list -> padded image list -> backbone/FPN -> RPN
-proposals -> ROI predictions, and say which two losses belong to each head.
+Training takes about 50-60 minutes. If the log continues to print heartbeats
+and epoch updates, there is no need to change the configuration or resubmit.
 
-## 4. Perform one optimization step
+## 5. Read the training history
 
-```bash
-uv run python examples/04_minimal_training_loop.py --lr 0.1
-uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
-```
+Open `metrics.csv` and start with:
 
-The tiny example makes one parameter change visible. The dry run then updates the
-configured detector on one prepared-data batch and ends with `dry-run OK`. It
-does not write a checkpoint or report quality. Use [Tutorial 04](04-training.md)
-to distinguish this probe from training evidence.
+- `epoch`: the completed epoch.
+- `loss_total`: the sum of training losses.
+- `valid_map_50_95`: the main validation selection metric.
+- `valid_map_50`: validation performance at IoU 0.5.
 
-Completion check: point to the operations that clear old gradients, construct a
-scalar loss, compute new gradients, and modify parameters.
+Loss and mAP measure different things and do not need to move together. The
+project selects `best.pt` with validation `map_50_95`, not simply the last
+epoch. The saved run selected epoch 18 and continued training through epoch 26.
 
-## 5. Complete a bounded learning run
+## 6. Inspect a real evaluation
 
-```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name first-detector --device cpu
-```
+Look under `evaluation/`:
 
-Inspect `config.yaml`, `run.yaml`, `metrics.csv`, `best.pt`, and `last.pt` under
-`artifacts/first-detector`. The 32/16/16 sample limits and two epochs make this a
-workflow-learning run, not a complete VOC benchmark. Explain why validation
-`map_50_95` selects `best.pt` and why it may differ from `last.pt`.
+- `evaluation.json` contains the test summary.
+- `per_class.csv` shows differences across all 20 classes.
+- `errors.csv` records false positives, misses, and localization errors.
+- `visualizations/` shows where the model succeeded or failed.
 
-Completion check: recover the exact manifest identity, weight policy, device,
-sample limits, selected epoch, and four loss columns from artifacts rather than
-from memory.
+Practice with the [saved result](../recorded-run/README.md), then inspect your
+own files. The published Kaggle v7 result is
+`mAP@0.5:0.95 = 0.322312` and `mAP@0.5 = 0.609917`.
 
-## 6. Evaluate evidence, then predict
+## 7. Choose what to explore next
 
-```bash
-uv run detect evaluate --checkpoint artifacts/first-detector/best.pt --split valid --output-dir artifacts/first-detector/evaluation-valid --device cpu
-uv run detect predict --checkpoint artifacts/first-detector/best.pt --image docs/assets/detection-target-anatomy.png --output-dir artifacts/prediction --device cpu
-```
+After the first run:
 
-The evaluate command requires matching prepared data and writes AP/AR,
-predictions, per-class rows, categorized errors, and ranked evidence images. The
-prediction command needs only the checkpoint and the shipped synthetic teaching
-diagram. It writes `detection-target-anatomy.json` and
-`detection-target-anatomy.png` under `artifacts/prediction`; this checks inference
-and artifact mechanics, not detector quality. Read
-[Tutorial 05](05-evaluation-and-inference.md), then explain one missed or false
-positive case with both its CSV row and visualization.
+- To understand training code, read [training](04-training.md) and the
+  [code tour](../concepts/code-tour.md).
+- To analyze the model, read [evaluation and prediction](05-evaluation-and-inference.md).
+- To change models, read [choosing a model](../guides/using-models.md).
+- To use your own data, read the [custom data guide](../guides/using-your-data.md).
+- If you have a local GPU, use the local command at the end of the training chapter.
 
-Completion check: say why IoU and score thresholds are separate, why difficult
-matches are ignored, and why validation rather than test is used while making
-choices.
-
-## 7. Compare one controlled change
-
-Create two distinctly named bounded runs that share the same manifest identity,
-seed, limits, and evaluation protocol, changing one intended configuration field.
-Then run:
-
-```bash
-uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95 --output artifacts/comparison.csv
-```
-
-The report selects the best row per run, verifies equal manifest identity, and
-shows semantic configuration differences. It intentionally excludes the
-operational fields `run_name`, `output_dir`, `device`, and `data.num_workers`.
-Pair that table with curves and visual errors. Two bounded runs establish only
-what happened in those runs.
-
-## Evidence boundary
-
-Synthetic examples prove local tensor and API contracts. A dry run proves one
-integrated update. A bounded run proves the artifact and evaluation path for its
-configured subset. None is a complete Pascal VOC benchmark. The separate
-[recorded full-VOC run](../recorded-run/README.md) preserves the provenance,
-scope, metrics, runtime, checkpoint hash, and real images needed for that claim.
+Change one important setting at a time and keep the original `config.yaml` and
+`metrics.csv`. This makes the result easier to understand than changing many
+parameters together.

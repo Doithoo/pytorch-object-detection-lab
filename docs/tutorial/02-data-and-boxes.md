@@ -1,138 +1,116 @@
-# Tutorial 02: Trust VOC Data Before Training
+# Tutorial 02: Meet VOC Data and Bounding Boxes
 
-[Simplified Chinese](02-data-and-boxes.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](02-data-and-boxes.zh-CN.md) | [Tutorial index](README.md)
 
-This chapter requires the locked environment from Tutorial 01 and enough local
-storage for Pascal VOC 2007. Downloading needs access to the official host;
-preparation, inspection, and preview are local operations.
+Pascal VOC 2007 is a good first object-detection dataset: it is manageable,
+well documented, and contains 20 familiar object classes. This project uses
+the official splits:
 
-## Download the two official archives
+| Split | Images | Purpose |
+|---|---:|---|
+| train | 2,501 | Update model parameters |
+| valid | 2,510 | Compare epochs and select `best.pt` |
+| test | 4,952 | Final evaluation after training |
 
-```bash
-uv run python scripts/download_data.py --data-dir data/raw
+The Kaggle runner downloads, extracts, and prepares these files automatically.
+You do not upload a dataset manually for the first run.
+
+## What one target contains
+
+VOC provides one XML file per image. The project converts it to the target
+dictionary expected by torchvision. The most important fields are:
+
+```text
+boxes:      FloatTensor[N, 4]
+labels:     Int64Tensor[N]
+image_id:   Int64Tensor[1]
+area:       FloatTensor[N]
+iscrowd:    Int64Tensor[N]
+difficult:  BoolTensor[N]
 ```
 
-The script uses these published archive identities:
+`N` is the number of objects in the image. When there are no ordinary objects,
+`boxes` still has shape `[0, 4]`, not a one-dimensional empty tensor.
 
-| Archive | Published MD5 |
-|---|---|
-| `VOCtrainval_06-Nov-2007.tar` | `c52e279531787c972589f7e41ab4ae64` |
-| `VOCtest_06-Nov-2007.tar` | `b6e924de25625d8de591ea690078ad9f` |
+## How VOC coordinates are converted
 
-Expected success prints both archive paths under `data/raw/archives` and leaves
-the extracted tree at `data/raw/VOCdevkit/VOC2007`. An existing archive is reused
-only when its checksum matches; a mismatched existing archive triggers a fresh
-download. If the completed transfer still has the wrong checksum, the command
-fails and removes its `.part` file. An unsafe tar member is also a hard failure.
-
-## Validate and publish fixed manifests
-
-```bash
-uv run detect prepare-data --data-dir data/raw --manifest-dir data/manifests
-```
-
-Preparation validates the official split counts (`2501` train, `2510` valid,
-`4952` test), disjoint image IDs, image/XML presence, decodability, dimensions,
-class names, boxes, and annotation filenames. Expected stdout has an `identity=`
-SHA-256 followed by the three counts.
-
-The command publishes `train.csv`, `valid.csv`, `test.csv`, `dataset.yaml`,
-`source.yaml`, and `summary.txt` together. Split hashes include row identities and
-the bytes of referenced images and annotations. The combined identity also
-includes ordered classes and the coordinate convention.
-
-Treat this prepared directory as immutable experiment input. It is not made
-read-only by the filesystem: running preparation again atomically replaces the
-directory. If source content or split membership changes, the identity changes,
-and old checkpoints must not be evaluated as if they used the new data.
-`--allow-nonstandard-counts` exists for deliberate VOC-shaped fixtures, but a
-run prepared that way is not an official VOC 2007 result.
-
-## Convert VOC coordinates exactly once
-
-VOC XML stores one-based inclusive corners. The parser converts
-`(xmin, ymin, xmax, ymax)` to zero-based continuous `xyxy` as:
+VOC XML coordinates are one-based and inclusive. The project converts them
+once:
 
 ```text
 (xmin - 1, ymin - 1, xmax, ymax)
 ```
 
-For VOC box `(11, 21, 50, 70)`, the project target is `[10, 20, 50, 70]`.
-Its width is `40`, height is `50`, and area is `2000`. The maximum values remain
-unchanged because they become exclusive continuous boundaries. The parser clips
-to image bounds and rejects a non-positive box after clipping.
+For example, `(11, 21, 50, 70)` becomes `[10, 20, 50, 70]`. The converted
+width is `40`, height is `50`, and area is `2000`. Later transforms and model
+code must not subtract or add one again.
 
-Do not subtract one again in a transform, and do not use an inclusive `+1` area
-formula after conversion. The tensor contract is the one established in
-[Tutorial 00](00-basics.md).
+![Teaching diagram of an image, bounding boxes, and target fields](../assets/detection-target-anatomy.png)
 
-## Difficult objects are preserved evidence
+This is a teaching diagram, not a training result. Green boxes are ordinary
+objects and the dashed orange box is a difficult object.
 
-VOC marks some objects `difficult=1`. Their treatment depends on purpose:
+## Difficult objects
 
-- Training removes difficult objects before transforms and loss computation.
-- Validation and test keep them with `difficult=True` and `iscrowd=1`.
-- Metrics do not count them as ordinary targets; detections matching only a
-  difficult target are ignored by error analysis.
-- An image can therefore have objects in XML but an empty training target. Its
-  boxes must still be shaped `[0, 4]`.
+VOC uses `difficult=1` for objects that cannot be identified or localized
+reliably. This project:
 
-This avoids teaching the model from ambiguous targets while preserving enough
-information for honest evaluation and visual inspection.
+- Excludes difficult objects from training losses.
+- Keeps them in validation and test targets.
+- Does not count a prediction that only matches a difficult object as an
+  ordinary false positive.
 
-## Inspect structure before pixels
+This avoids training on ambiguous targets while preserving their information
+for evaluation and visualization.
 
-```bash
-uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16
+## Data preparation on Kaggle
+
+The runner:
+
+1. Downloads the official train/validation and test archives.
+2. Checks the official MD5 values.
+3. Extracts them under `/kaggle/working/data`.
+4. Creates `train.csv`, `valid.csv`, `test.csv`, and `dataset.yaml`.
+5. Reads one batch before training to confirm that images and boxes reach the
+   model.
+
+These log lines show that the download completed:
+
+```text
+{"phase": "download_voc2007", "status": "started"}
+{"phase": "download_voc2007", "status": "completed", ...}
 ```
 
-Expected YAML identifies the dataset, manifest identity, total and inspected
-images, ordinary and difficult object counts, empty images, class counts, image
-size ranges, and box width/height/area ranges. `--limit 16` bounds decoded
-inspection; it does not claim to summarize every object's distribution. Repeat
-on `valid` when checking difficult annotations.
+The prepared-data identity is written to `run.yaml` and checkpoints so an
+evaluation can confirm that it uses the same data. For a first pass, think of
+it as the version number of the prepared dataset.
 
-A missing source image, malformed XML, mismatched dimensions, empty split, or
-non-positive limit fails with a concise error. Do not continue to training just
-because the manifest CSV itself can be opened.
+## Optional: inspect VOC locally
 
-## Inspect pixels and boxes together
+To open the images and annotations yourself, run from the repository root:
 
 ```bash
+uv run python scripts/download_data.py --data-dir data/raw
+uv run detect prepare-data --data-dir data/raw --manifest-dir data/manifests
+uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16
 uv run python scripts/preview_dataset.py data/manifests --data-dir data/raw --split valid --limit 4 --output artifacts/dataset_preview.png
 ```
 
-Expected stdout is `artifacts/dataset_preview.png`. Open the image and check that
-the annotations present in the selected rows surround the right objects and have
-plausible class names. Ordinary boxes are solid green. Dashed orange difficult
-boxes appear only when a selected row contains difficult annotations; the script
-does not search ahead to guarantee one. A parser can be internally consistent
-and still encode a mistaken custom coordinate convention, so this visual check
-is part of the trust boundary.
+`inspect-data` prints image sizes, object counts, classes, and box ranges. The
+preview draws annotations on real images so you can check labels and box
+placement. `--limit` controls how many images you inspect; it does not change
+the official split.
 
-The same conventions are illustrated without VOC data in this deterministic
-synthetic teaching diagram:
+## What to check when something looks wrong
 
-![Synthetic detection target anatomy](../assets/detection-target-anatomy.png)
+- Every box is shifted by one pixel: check for a repeated `xmin - 1` or
+  `ymin - 1` conversion.
+- `boxes` has the wrong shape: an empty target must still be `[0, 4]`.
+- A training image has no targets: check whether all its objects are difficult.
+- Kaggle cannot download data: confirm Internet is enabled, then check whether
+  the official host is temporarily unavailable.
+- Counts are not `2501 / 2510 / 4952`: confirm you have complete official
+  VOC 2007 data.
 
-This image is documentation evidence for rendering and target anatomy, not a
-model prediction or benchmark result. Unlike the selected-row dataset preview, it
-is explicitly synthetic and guarantees one labeled dashed difficult target for
-the exercise.
-
-## Common failure boundaries
-
-- Download fails before checksums: network or official-host access is missing.
-- An existing archive checksum differs: the script downloads it again. If the
-  completed transfer still differs, the command fails and removes `.part`; do
-  not prepare from the unverified archive.
-- Preparation reports nonstandard counts or split overlap: the source tree does
-  not satisfy the official protocol.
-- Inspection identity differs from a checkpoint: data provenance changed.
-- Preview boxes are shifted by one pixel or have implausible size: revisit the
-  one-based inclusive to continuous xyxy conversion.
-- Training targets unexpectedly vanish: inspect whether all objects are marked
-  difficult before assuming a collate bug.
-
-Next, follow these image and target lists through the maintained torchvision
-detector in [Tutorial 03](03-faster-rcnn.md).
+Continue to [Faster R-CNN](03-faster-rcnn.md) to see how images and targets
+enter the model.

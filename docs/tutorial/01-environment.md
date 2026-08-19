@@ -1,114 +1,91 @@
-# Tutorial 01: Environment, Devices, and Trust Boundaries
+# Tutorial 01: Choose a Training Environment
 
-[Simplified Chinese](01-environment.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](01-environment.zh-CN.md) | [Tutorial index](README.md)
 
-The goal is a repeatable environment whose network and hardware decisions are
-visible. You need Python 3.10-3.12, `uv`, and a clone of this repository. VOC is
-not required for the checks before the training dry run.
+This tutorial recommends training on Kaggle. Kaggle already provides Python,
+PyTorch, and an NVIDIA GPU, so you can focus on the data, model, and result
+instead of configuring local CUDA and drivers first.
 
-## Install exactly the locked environment
+## Recommended: a Kaggle GPU
 
-From the repository root:
+The project includes a runner you can submit directly. Install the Kaggle CLI
+locally:
+
+```bash
+uv tool install kaggle
+kaggle auth login
+```
+
+Then follow the [Kaggle training guide](../guides/kaggle.md) to change the job
+owner and submit it. On the web page you need:
+
+- A T4 or newer NVIDIA GPU. Do not use P100; the current PyTorch build does not
+  support its `sm_60` compute capability.
+- Internet enabled for official VOC 2007 and ImageNet backbone downloads.
+- About 60 minutes of runtime.
+
+If Kaggle displays T4 x2, the project still uses only `cuda:0`. An idle second
+card does not affect training.
+
+## Optional: inspect the project locally
+
+Local use requires Python 3.10-3.12 and [uv](https://docs.astral.sh/uv/). From
+the repository root:
 
 ```bash
 uv sync --locked --extra dev
 uv run detect --version
 uv run detect --help
+uv run detect list-models
 ```
 
-`uv sync --locked` installs the resolution already recorded in `uv.lock`; it
-fails instead of silently changing that resolution. `--extra dev` installs the
-test and documentation tooling used in this lab. The version command prints
-`0.1.0` for this checkout, and help lists commands such as `prepare-data`,
-`inspect-data`, `train`, `evaluate`, and `predict` without loading a model.
+The version should be `0.1.0`, and help should include `prepare-data`,
+`inspect-data`, `train`, `evaluate`, and `predict`. These commands do not start
+training or download weights.
 
-Confirm that Python, PyTorch, and the package resolve from the same environment:
+Inspect the Kaggle reference configuration:
 
 ```bash
-uv run python -c "import sys, torch, object_detector; print(sys.version); print(torch.__version__); print(object_detector.__file__)"
+uv run detect show-config --config configs/reference_fasterrcnn.yaml
 ```
 
-The last path should point at this repository's `src/object_detector`. A path
-from another checkout is an environment problem, not a data or detector problem.
+`show-config` only displays the resolved values and their sources. It does not
+construct a model. The reference configuration uses an `imagenet1k_v1`
+backbone; the Kaggle runner downloads that weight in its networked environment.
 
-## Check CPU, CUDA, and Apple MPS
+## Optional: check local devices
 
 ```bash
 uv run python -c "import torch; print('cuda', torch.cuda.is_available()); print('mps', torch.backends.mps.is_available()); print('cpu', True)"
-```
-
-The project API resolves `device: auto` in the order CUDA, MPS, CPU. To inspect
-the exact result on this machine:
-
-```bash
 uv run python -c "from object_detector.preflight import resolve_device; print(resolve_device('auto'))"
 ```
 
-Start with `--device cpu` when diagnosing the integrated pipeline. Explicit
-`cuda` or `mps` training requests are rejected by preflight when unavailable.
-MPS training uses full precision; AMP scaling is enabled only for CUDA. This
-project is single-device and does not implement distributed training.
+`device: auto` tries CUDA, Apple MPS, then CPU. A machine without CUDA is not a
+problem; continue on Kaggle. CPU is suitable for examples and a dry run, not a
+complete 26-epoch VOC training run.
 
-After Chapter 02 has prepared data, the production boundary check is:
+## Optional: perform one CPU dry run
+
+After Chapter 02 prepares local data, you can run:
 
 ```bash
 uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
 ```
 
-Expected output includes the native image shapes, object counts, named finite
-losses, and `dry-run OK`. A dry run performs one optimizer update in memory but
-does not publish a run directory or checkpoint.
+It reads one batch, performs forward and backward passes plus one parameter
+update, then prints `dry-run OK`. It saves no checkpoint and does not mean the
+model has completed training.
 
-## Resolve configuration before allocating a model
+## Common questions
 
-```bash
-uv run detect show-config --config configs/learning_minimal.yaml
-```
+- `kaggle` is not found: rerun `uv tool install kaggle` and ensure the uv tool
+  directory is on PATH.
+- The Kaggle API rejects authentication: run `kaggle auth login --force`.
+- The Kaggle page has no GPU option: complete platform account verification and
+  check your GPU quota.
+- Local CUDA is unavailable: use Kaggle; you do not need to reinstall the whole
+  local environment to learn this project.
+- `uv sync --locked` fails: confirm Python is 3.10-3.12.
+- P100 reports `no kernel image`: select a T4 or newer GPU.
 
-Expected YAML includes `weights: none`, sample limits of 32 train, 16 valid, and
-16 test images, two epochs, `num_workers: 0`, and `device: auto`. It also labels
-each leaf source as default or YAML. Use the same command with `--set KEY VALUE`
-before an experiment when you need to verify an override.
-
-## The weight policy is a network boundary
-
-`configs/learning_minimal.yaml` sets `model.weights: none`. The registry passes
-both detector and backbone weights as `None`, so construction does not request
-pretrained weights. This is the reliable offline teaching path.
-
-`model.weights: imagenet1k_v1` is different. Preflight checks the expected local
-Torch Hub checkpoint path. If the file is absent, it prints a notice that model
-construction requires network access. The repository does not promise that the
-network is available or that a cache contains the right file. Decide that policy
-before starting; do not infer it from a model name.
-
-Evaluation and prediction rebuild from a self-contained project checkpoint with
-`weights=none`, then load `model_state`. They need the local checkpoint and, for
-evaluation, matching prepared data; they do not need to fetch backbone weights.
-
-## The dataset download is a separate trust boundary
-
-The model's offline weight policy does not make VOC appear locally. Chapter 02
-uses `scripts/download_data.py`, which accesses the official Oxford VOC HTTP
-URLs only when a correctly checksummed archive is not already present. It writes
-`.part` files during transfer, verifies the published MD5, rejects unsafe tar
-members, and then extracts. Network availability itself is outside this
-repository's guarantees.
-
-## Common failure boundaries
-
-- `uv sync --locked` reports lock incompatibility: do not remove `--locked` to
-  conceal it; check the supported Python version and the committed lockfile.
-- `uv run detect` is missing but Python imports work elsewhere: the wrong
-  environment or checkout is active.
-- CUDA is reported unavailable: check the installed PyTorch build and driver
-  outside the lab before changing detector settings.
-- MPS fails on an operation: reproduce on CPU with `num_workers: 0` to separate
-  a backend issue from a data issue.
-- Training prints a pretrained-weight cache notice: the selected policy is not
-  an offline guarantee on this machine.
-- The dry run fails on missing `dataset.yaml`: environment checks passed, but
-  the data preparation boundary has not.
-
-Continue to [Tutorial 02](02-data-and-boxes.md) to download, validate, freeze,
-inspect, and preview the data used by later commands.
+Continue to [VOC data and bounding boxes](02-data-and-boxes.md).

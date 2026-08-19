@@ -1,10 +1,10 @@
 # 添加内部模型
 
-[English](adding-models.md) | [模型契约教程](../tutorial/03-faster-rcnn.zh-CN.md)
+[English](adding-models.md) | [模型规则教程](../tutorial/03-faster-rcnn.zh-CN.md)
 
 本指南面向需要加入不同检测器家族或受控对比模型的维护者。版本 0.1 没有稳定的外部插件接口，也不会加载任意 `module:function` 工厂。添加模型意味着修改并测试仓库；检查点不会序列化用户的可执行代码。
 
-## 实现构造器契约
+## 实现构造器
 
 torchvision 专用构造逻辑放在 `src/object_detector/models/torchvision_models.py`：
 
@@ -25,7 +25,7 @@ def build_detector(
 | `train()` | `Tensor[3,H,W]` 图像列表、目标列表 | 非空且每项为有限标量张量的损失映射 |
 | `eval()` | 仅图像列表 | 每张图像一个包含 `boxes`、`labels`、`scores` 的映射 |
 
-不要在命令行或训练器中改写这份契约。仅依赖检查点的预测路径会用 `weights="none"` 重建注册架构，再加载保存的状态，因此模型名称和参数语义必须稳定。
+不要在命令行或训练器中重新解释这套接口。仅依赖 checkpoint 的预测会用 `weights="none"` 重建注册模型，再加载保存状态，因此模型名称和参数含义必须稳定。
 
 ## 注册元数据
 
@@ -43,4 +43,4 @@ uv run detect list-models
 uv run detect model-info fasterrcnn_mobilenet_v3_large_320_fpn
 ```
 
-只有参数确实组成合理对比时才增加 YAML 配方，然后执行 `show-config` 和 CPU 试运行。构造成功、损失有限或有界运行都不能成为性能结论。同步更新双语[模型目录](../reference/model-zoo.zh-CN.md)、相关链接、必要的打包声明；若扩展改变外部代码边界，还要更新架构决策记录。
+只有参数确实组成合理对比时才增加 YAML 配置，然后执行 `show-config` 和 CPU dry run。构造成功、loss 有限或小规模运行都不能成为性能结论。同步更新双语[模型参考](../reference/model-zoo.zh-CN.md)、相关链接和必要的打包声明；如果扩展改变外部代码与项目的交互方式，还要更新架构决策记录。

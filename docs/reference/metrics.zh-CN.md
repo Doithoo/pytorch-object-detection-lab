@@ -2,7 +2,7 @@
 
 [English](metrics.md) | [评估教程](../tutorial/05-evaluation-and-inference.zh-CN.md)
 
-本参考用于阅读训练历史、AP/AR 报告、错误行和证据图。指标是没有单位的小数，不是百分数。[完整 VOC 实测运行](../recorded-run/README.zh-CN.md)提供一个具体案例；有界运行和未经执行的配方不属于同等级证据。
+本参考用于阅读训练历史、AP/AR 报告、错误行和评估图。指标是没有单位的小数，不是百分数。[Kaggle 训练记录](../recorded-run/README.zh-CN.md)提供一个具体案例；小规模运行和未经执行的配置不能与它直接比较。
 
 ## 训练 `metrics.csv`
 
@@ -25,7 +25,7 @@ Faster R-CNN 固定返回 `loss_classifier`、`loss_box_reg`、`loss_objectness`
 
 后端是由 `pycocotools` 支持的 `torchmetrics.detection.MeanAveragePrecision(box_format="xyxy", iou_type="bbox", class_metrics=True)`。
 
-| 字段 | 契约 |
+| 字段 | 规则 |
 |---|---|
 | `map_50_95` | IoU 0.50、0.55、...、0.95 上的平均 AP |
 | `map_50` | IoU 0.50 时的 AP |
@@ -50,7 +50,7 @@ VOC 困难目标以 `iscrowd=1` 进入评估，不增加普通 `target_count`。
 |---|---|
 | `metrics` | 上述汇总字段，包括嵌套 `per_class` |
 | `backend_versions` | 已安装 `torchmetrics` 和 `pycocotools` 的版本字符串 |
-| `score_threshold` | 序列化预测与证据渲染的命令行阈值，默认 0.05 |
+| `score_threshold` | 序列化预测与图像渲染的命令行阈值，默认 0.05 |
 | `error_score_threshold` | 检查点配置中的错误候选阈值，默认 0.5 |
 | `error_iou_threshold` | 检查点配置中的同类别匹配阈值，默认 0.5 |
 | `max_detections` | 支持的指标上限，固定为 100 |
@@ -60,7 +60,7 @@ VOC 困难目标以 `iscrowd=1` 进入评估，不增加普通 `target_count`。
 
 修改命令行 `--score-threshold` 会改变 `predictions.json` 和渲染的蓝框，不会改变 AP/AR 或 `prediction_count`。模型内部的后处理，例如 `box_score_thresh` 或 SSDLite `score_thresh`，发生在模型内部，因此会改变进入后端的预测。
 
-## CSV 与 JSON 证据
+## CSV 与 JSON 输出
 
 `per_class.csv` 的列依次为 `class_id,class_name,map_50_95,mar_100`。`predictions.json` 是 `{image_id, predictions}` 数组；每条保留预测包含 `box`（四个舍入后的 `xyxy` 值）、`class_id`、`class_name` 和 `score`。
 

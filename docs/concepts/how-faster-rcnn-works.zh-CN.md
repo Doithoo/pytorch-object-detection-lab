@@ -2,7 +2,7 @@
 
 [English](how-faster-rcnn-works.md) | [教程章节](../tutorial/03-faster-rcnn.zh-CN.md)
 
-本页适合已经理解张量、但希望明确 Faster R-CNN 各部分职责的读者。内容解释公开的 torchvision 契约，不重新实现模型。
+本页适合已经理解张量、想进一步了解 Faster R-CNN 各部分职责的读者。内容解释 torchvision 的公开输入输出，不重新实现模型。
 
 ## 模型自有图像变换
 
@@ -19,7 +19,7 @@
   -> 特征图 {层级: [B,C,Hk,Wk]}
 ```
 
-这些特征图是候选区域和 ROI 分类共享的证据，还不是检测框或 VOC 类别预测。
+这些特征图会同时用于候选区域和 ROI 分类，还不是检测框或 VOC 类别预测。
 
 ## 区域候选网络
 
@@ -56,16 +56,16 @@ ROI Align 从合适的金字塔层级为每个候选区域采样固定大小的�
 
 每个预测包含 `boxes: float32 [M,4]`、`labels: int64 [M]` 和 `scores: float32 [M]`，每张图像的 `M` 可以不同。评估不能通过传入目标来请求损失；训练输出也不能当成指标预测解释。
 
-离线运行真实契约：
+离线查看真实模型行为：
 
 ```bash
 uv run python examples/03_model_contract.py
 ```
 
-预期输出会列出四项损失和三个预测键。示例用 `weights="none"` 和合成张量构造 `fasterrcnn_mobilenet_v3_large_320_fpn`，只执行前向传播，不更新参数，也不提供精度证据。
+预期输出会列出四项损失和三个预测键。示例用 `weights="none"` 和合成张量构造 `fasterrcnn_mobilenet_v3_large_320_fpn`，只执行前向传播，不更新参数，也不报告精度。
 
-## 失败与证据边界
+## 容易出错的输入
 
-0 是背景，因此目标标签必须从 1 开始。检测框必须有限、有正面积，并采用零基连续 `xyxy`。图像与目标必须保持一一对应的列表。试运行在示例基础上对准备数据执行一次优化器更新；有界训练再加入验证和产物。两者都不是[单独记录的完整 VOC 实测结果](../recorded-run/README.zh-CN.md)。
+0 是背景，因此目标标签必须从 1 开始。检测框必须有限、有正面积，并采用零基连续 `xyxy`。图像与目标必须保持一一对应的列表。dry run 在示例基础上对准备数据执行一次优化器更新；小规模训练再加入验证和输出。两者都不是[已完成的 Kaggle VOC 训练](../recorded-run/README.zh-CN.md)。
 
 接下来阅读[教程 04](../tutorial/04-training.zh-CN.md)了解优化和产物职责，或查看[模型参考](../reference/model-zoo.zh-CN.md)，比较两个 Faster R-CNN 骨干网络与 SSDLite。

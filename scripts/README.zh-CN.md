@@ -2,7 +2,7 @@
 
 [English](README.md) | [工作流教程](../docs/tutorial/README.zh-CN.md)
 
-请在仓库根目录通过 `uv run python` 运行脚本。每个脚本只跨越一个明确边界，不会静默训练或评估检测器。
+请在仓库根目录通过 `uv run python` 运行脚本。每个脚本只完成一项明确工作，不会静默训练或评估检测器。
 
 ## 脚本索引
 
@@ -41,6 +41,6 @@ uv run python scripts/plot_metrics.py --metrics artifacts/run/metrics.csv --outp
 uv run python scripts/generate_doc_assets.py --output-dir docs/assets
 ```
 
-## 证据边界
+## 适用范围
 
-下载与预览脚本证明源文件完整性和可见标注行为，不能证明学习质量。指标图只展示已经记录的 loss 列，不重新计算指标，也不能证明模型收敛。文档资源是合成教学图。这些输出都不是完整 VOC 成绩；未来证据完整的运行必须满足[运行记录发布门槛](../docs/recorded-run/README.zh-CN.md)。
+下载与预览脚本用于检查源文件和标注，不能衡量模型质量。指标图只展示已经记录的 loss 列，不重新计算指标，也不能说明模型已经收敛。文档图片是合成教学图。这些输出都不是完整 VOC 成绩；已完成结果见 [Kaggle 训练记录](../docs/recorded-run/README.zh-CN.md)。

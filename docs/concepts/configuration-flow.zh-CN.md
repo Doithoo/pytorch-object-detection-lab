@@ -38,7 +38,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 随后 `training.run_training` 加载 `dataset.yaml`，调用 `preflight.validate_training_request`，按 CUDA、MPS、CPU 的顺序解析 `auto`，初始化随机数，构造注册模型并建立数据集与加载器。预检查核对必须的清单文件、类别数、加速器可用性、输出目标可写性，以及具名骨干网络权重是否已缓存。缺少权重只产生提示，不是错误；稍后的 torchvision 模型构造可能下载。
 
-`--dry-run` 和 `--resume` 改变编排流程，不属于配方结构。试运行只消费一个训练批次，不写正常运行产物。续训指向有结构版本的检查点，并与解析配置核对。
+`--dry-run` 和 `--resume` 改变编排流程，不属于配置结构。试运行只消费一个训练批次，不写正常运行产物。续训指向有结构版本的检查点，并与解析配置核对。
 
 ## 仅运行时命令参数
 
@@ -55,8 +55,8 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 评估没有 `--config` 或 `--set`：它会校验并加载检查点保存的解析配置，用于数据路径、样本上限、错误阈值、最大检测数、批大小和工作进程数。命令行 `--score-threshold` 是独立的序列化与可视化阈值，不会替换某个 `AppConfig` 中保存的 `evaluation.score_threshold`。预测只使用检查点模型、类别、预处理和运行时输入。
 
-## 证据与失败边界
+## 每条命令检查什么
 
-`show-config` 证明文本解析，`train --dry-run` 证明配置、数据、模型与更新集成，有界正常运行证明产物发布，评估证明检查点与匹配清单上的指标。通过前一层不能证明后一层。
+`show-config` 检查文本解析，`train --dry-run` 检查一次完整的数据与模型更新，小规模正常运行检查输出创建，评估检查 checkpoint 与匹配清单上的指标。每条命令覆盖流程中的不同部分。
 
 未知字段或错误类型在模型构造前失败。预检查问题会在创建正常运行目录前失败。新训练拒绝已有运行目录。检查点和文本产物分别原子写入；评估和目录预测则暂存并发布完整输出目录。接下来可阅读[代码导览](code-tour.zh-CN.md)了解模块职责，或查看[配置参考](../reference/config-reference.zh-CN.md)中的全部叶字段。

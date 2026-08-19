@@ -1,76 +1,63 @@
 # Use Your Own VOC-Shaped Data
 
-[Simplified Chinese](using-your-data.zh-CN.md) | [Tutorial: data and boxes](../tutorial/02-data-and-boxes.md)
+[简体中文](using-your-data.zh-CN.md) | [Dataset format](../reference/dataset-format.md)
 
-This guide is for users whose images and annotations can be arranged like Pascal VOC 2007. The current application does not accept arbitrary classes or annotation formats through configuration. Supporting either requires code changes; there is no stable external dataset plugin API.
+If your data already follows Pascal VOC JPEG, XML, and split-text layout, you
+can reuse the project's preparation, training, and evaluation code. This guide
+assumes your objects still use the built-in 20 VOC classes.
 
-## Choose the right path
+Supporting arbitrary new classes requires changes to `VOC_CLASSES`, class
+counts, checkpoint metadata, and tests and is outside this page.
 
-Use the official path when you need the VOC 2007 protocol and counts. Download the two verified archives and run preparation without an exception flag:
-
-```bash
-uv run python scripts/download_data.py --data-dir data/raw
-uv run detect prepare-data --data-dir data/raw --manifest-dir data/manifests
-```
-
-Use the fixture path only when your controlled data deliberately has VOC's directory, XML, class, and coordinate rules but different split counts:
-
-```bash
-uv run detect prepare-data --data-dir data/my-voc --manifest-dir data/my-manifests --allow-nonstandard-counts
-```
-
-`--allow-nonstandard-counts` disables only the checks for 2501 train, 2510 valid, and 4952 test images. Every other validation still runs. A manifest prepared this way is VOC-shaped evidence, not an official VOC 2007 result.
-
-## Required source tree
+## Directory layout
 
 ```text
-data/my-voc/VOCdevkit/VOC2007/
-  JPEGImages/<image-id>.jpg
-  Annotations/<image-id>.xml
-  ImageSets/Main/train.txt
-  ImageSets/Main/val.txt
-  ImageSets/Main/test.txt
+my-data/
+└── VOCdevkit/
+    └── VOC2007/
+        ├── Annotations/
+        ├── ImageSets/Main/
+        │   ├── train.txt
+        │   ├── val.txt
+        │   └── test.txt
+        └── JPEGImages/
 ```
 
-Each nonempty split line is an image ID without an extension. IDs must be unique within a split and disjoint across train, valid (`val.txt`), and test. Every ID must resolve to both a decodable JPEG and an XML file. The XML `filename` must equal `<image-id>.jpg`, and XML width and height must match the decoded image.
+Every image ID needs matching `.jpg` and `.xml` files. XML classes must be one
+of the 20 VOC names, `difficult` may be absent or `0` / `1`, and coordinates
+use VOC one-based inclusive format.
 
-Each XML object name must be one of the 20 names in the [dataset format reference](../reference/dataset-format.md). Arbitrary-class datasets are not accepted without changing `VOC_CLASSES`, metadata construction, tests, and the class-count contract. `difficult` is optional and defaults to `0`; when present it must be `0` or `1`.
+## Prepare and inspect data
 
-VOC XML boxes are one-based inclusive. Preparation converts `(xmin, ymin, xmax, ymax)` once to `(xmin - 1, ymin - 1, xmax, ymax)`, clips to image bounds, and rejects a nonpositive box. Runtime targets use zero-based continuous `xyxy` with exclusive maximum boundaries.
-
-## Publish and inspect the manifest
-
-Successful preparation prints an `identity=` SHA-256 and split counts, then atomically publishes `train.csv`, `valid.csv`, `test.csv`, `dataset.yaml`, `source.yaml`, and `summary.txt`. These files contain paths, metadata, hashes, and provenance. They do not copy source JPEG or XML bytes; the runtime still reads below `data.data_dir`.
+Explicitly allow counts that differ from official VOC:
 
 ```bash
-uv run detect inspect-data --manifest-dir data/my-manifests --data-dir data/my-voc --split train --limit 16
-uv run python scripts/preview_dataset.py data/my-manifests --data-dir data/my-voc --split valid --limit 4 --output artifacts/my-data-preview.png
+uv run detect prepare-data --data-dir my-data --manifest-dir data/my-manifests --allow-nonstandard-counts
+uv run detect inspect-data --manifest-dir data/my-manifests --data-dir my-data --split train --limit 16
+uv run python scripts/preview_dataset.py data/my-manifests --data-dir my-data --split train --limit 4 --output artifacts/my-data-preview.png
 ```
 
-Expected evidence is an inspection YAML report plus `artifacts/my-data-preview.png`. The preview script overwrites an existing PNG at `--output` without prompting, so choose a new path when preserving earlier evidence. Verify class names, empty images, difficult counts, image ranges, and box placement before training. Training removes difficult objects; inspection and evaluation retain them as `difficult=True` and `iscrowd=1`.
+Open the preview and check labels and box placement. Fix count, class,
+coordinate, or image-size problems in source XML, then regenerate manifests.
 
-## Prove the configured runtime path
+## Check training with a few samples
 
-Point the learning recipe at the same source and manifest directories. First inspect the resolved values and their `cli` sources:
+Override the data paths:
 
 ```bash
-uv run detect show-config --config configs/learning_minimal.yaml --set data.data_dir data/my-voc --set data.manifest_dir data/my-manifests --set run_name my-data-check
+uv run detect show-config --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check
+uv run detect train --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check --dry-run --device cpu
 ```
 
-Then cross the dataset, model, loss, and optimizer boundary with one dry-run batch:
+`dry-run OK` means one image batch and its targets completed an update. It does
+not save a model.
 
-```bash
-uv run detect train --config configs/learning_minimal.yaml --set data.data_dir data/my-voc --set data.manifest_dir data/my-manifests --set run_name my-data-dry-run --dry-run --device cpu
-```
+## Begin a training run
 
-Expected output names image shapes, target counts, finite losses, and `dry-run OK`. Images and XML are read below `data/my-voc`; manifest rows and identity come from `data/my-manifests`. Dry run writes no normal run directory.
+Copy and adjust a configuration for your data size, choose a new `run_name`,
+then train on Kaggle or a compatible local GPU. Metrics from non-official data
+describe only your split and are not directly comparable with the project's
+VOC 2007 values.
 
-To exercise the bounded artifact path, use a distinct name and the same overrides:
-
-```bash
-uv run detect train --config configs/learning_minimal.yaml --set data.data_dir data/my-voc --set data.manifest_dir data/my-manifests --set run_name my-data-bounded --device cpu
-```
-
-On success this writes the standard run set under `artifacts/my-data-bounded`. The learning recipe still limits samples and epochs, and nonstandard-count data is still not official VOC 2007. These commands provide integration evidence only; they do not produce a full benchmark result.
-
-If any source image, XML, or split changes, rerun preparation and use the new identity. Do not edit CSV rows or hashes to preserve an old identity. Continue with the [dry-run and training tutorial](../tutorial/04-training.md), or read [adding datasets](adding-datasets.md) when the source format is genuinely different.
+Keep `config.yaml`, `run.yaml`, `metrics.csv`, `best.pt`, and `last.pt`. During
+evaluation, use the same `data/my-manifests` that produced the checkpoint.

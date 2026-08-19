@@ -1,8 +1,8 @@
-# Dataset and Manifest Contract
+# Dataset and Manifest Format
 
 [Simplified Chinese](dataset-format.zh-CN.md) | [VOC 2007 protocol](voc2007.md)
 
-This reference defines the only runtime dataset contract in version 0.1. It is for data authors, extension maintainers, and anyone auditing experiment identity. The provider accepts the 20 VOC classes only; arbitrary-class datasets require code changes.
+This reference defines the runtime dataset format in version 0.1. It is for data authors, extension maintainers, and anyone checking experiment identity. The provider accepts the 20 VOC classes only; arbitrary-class datasets require code changes.
 
 ## Source tree and XML
 
@@ -49,7 +49,7 @@ For each row, a split hash consumes `image_id,image_path,annotation_path\n`, eac
 
 All six files are written to a staged directory and atomically replace the destination as a set. If validation or publication fails, preparation does not expose a partial new manifest.
 
-## Runtime item contract
+## Runtime item format
 
 The loader decodes RGB and returns `image: float32 Tensor[3,H,W]` scaled to `[0,1]`. Its target is:
 
@@ -64,4 +64,4 @@ The loader decodes RGB and returns `image: float32 Tensor[3,H,W]` scaled to `[0,
 
 Training removes difficult objects before augmentation. Validation, test, inspection, and visualization retain them. Empty and difficult-only training samples remain valid with `boxes [0,4]` and object vectors `[0]`. Horizontal flip updates boxes; degenerate boxes are filtered with all object-aligned fields. Collation returns `list[image]` and `list[target]`, not stacked tensors.
 
-Use `uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16` for bounded structural evidence, then follow [using your data](../guides/using-your-data.md) for preparation and preview commands.
+Use `uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16` to inspect a limited number of items, then follow [using your data](../guides/using-your-data.md) for preparation and preview commands.

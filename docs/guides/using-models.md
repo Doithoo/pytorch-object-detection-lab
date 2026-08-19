@@ -1,49 +1,61 @@
-# Choose and Use a Registered Model
+# Choose a Model
 
-[Simplified Chinese](using-models.zh-CN.md) | [Model zoo](../reference/model-zoo.md)
+[简体中文](using-models.zh-CN.md) | [Model reference](../reference/model-zoo.md)
 
-This guide is for learners choosing among the three maintained torchvision detectors. It covers discovery, weight policy, dry-run evidence, and comparison. It does not claim a speed or accuracy winner. The one [recorded full-VOC run](../recorded-run/README.md) covers only the Faster R-CNN MobileNet recipe and is not a three-model comparison.
-
-## Discover before editing YAML
+The project includes three torchvision detectors. Use the Kaggle-tested Faster
+R-CNN MobileNet for a first run, then compare other models after the workflow is
+familiar.
 
 ```bash
 uv run detect list-models
 uv run detect model-info fasterrcnn_mobilenet_v3_large_320_fpn
-uv run detect model-info fasterrcnn_resnet50_fpn
-uv run detect model-info ssdlite320_mobilenet_v3_large
 ```
 
-`list-models` prints stable names, `two_stage` or `one_stage`, and supported weight policies without constructing a model or touching the network. `model-info` adds the maintained parameter names and input notes. Use Faster R-CNN MobileNet for the tutorial's two-stage path, Faster R-CNN ResNet-50 to change the backbone while retaining the family, or SSDLite to compare a one-stage detector. These are structural choices, not benchmark rankings.
+These commands only display model information. They do not download weights or
+start training.
 
-## Choose a weight policy deliberately
+## Choosing among the three models
 
-`weights: none` passes both detector weights and backbone weights as `None`. Model construction is offline and random; source data must still be local. Use it for examples, dry runs, contract testing, and experiments meant to isolate architecture behavior.
+| Model | Character | Suggestion |
+|---|---|---|
+| `fasterrcnn_mobilenet_v3_large_320_fpn` | Compact two-stage model with a completed Kaggle VOC run | Use for the first run |
+| `fasterrcnn_resnet50_fpn` | Two-stage model with a larger backbone and more compute | Compare when studying backbone effects |
+| `ssdlite320_mobilenet_v3_large` | One-stage model with fixed 320 input | Use when comparing one-stage and two-stage detection |
 
-`weights: imagenet1k_v1` still sets full detector weights to `None`, but requests the pinned torchvision ImageNet backbone enum. Training preflight computes the expected torch hub checkpoint path. If that file exists, no network notice is emitted. If absent, preflight prints a notice that network access is required; model construction then lets torchvision download into the torch cache or fail with its underlying network/cache error. Preflight does not download anything itself and the project has no separate download flag.
+The project has not published a full three-model comparison under one training
+budget, so this table is not a speed or accuracy ranking.
 
-Inspect the selected path through a dry run:
+## Weight settings
+
+- `weights: imagenet1k_v1`: the detection head starts randomly while the
+  backbone uses ImageNet pretrained weights. Kaggle reference training uses
+  this setting and downloads the weight once.
+- `weights: none`: detector and backbone both start randomly, useful for
+  offline examples and dry runs.
+
+`none` does not mean data is unnecessary; it only prevents a pretrained-weight
+download during model construction.
+
+## Inspect final parameters first
 
 ```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name model-check --dry-run --device cpu
+uv run detect show-config --config configs/reference_fasterrcnn.yaml
 ```
 
-Expected output lists image shapes, target counts, finite named losses, and `dry-run OK`. It performs one optimizer update but writes no run directory. For an offline pretrained test, place the exact torchvision file in the cache before model construction; do not rename an unrelated file. Cache locations are derived from `torch.hub.get_dir()/checkpoints`, so they can vary by environment.
+`min_size`, `max_size`, and `box_score_thresh` affect internal resizing and
+prediction filtering. Keep project defaults for the first run rather than
+changing several parameters together.
 
-## Switch one variable
+## Make a fair comparison
 
-Use a shipped recipe or override only `model.name` while holding the manifest identity, weight policy, sample limits, seed, optimizer, and epochs constant:
+Keep data splits, weight policy, seed, optimizer, epochs, and sample limits
+fixed, and change only `model.name`. Use a dry run first, then give both real
+runs the same Kaggle GPU budget.
 
 ```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name faster-mobile --device cpu
-uv run detect train --config configs/learning_minimal.yaml --set run_name faster-resnet --set model.name fasterrcnn_resnet50_fpn --device cpu
+uv run detect train --config configs/learning_minimal.yaml --set model.name ssdlite320_mobilenet_v3_large --dry-run --device cpu
 ```
 
-Both configurations require `model.expected_num_classes: 21` for VOC's background plus 20 objects. Model-specific values belong under `model.params`; inspect the supported maintained keys in the [model zoo](../reference/model-zoo.md). `weights`, `weights_backbone`, and `num_classes` are reserved and rejected there.
-
-After both runs finish, compare validation evidence from the same manifest:
-
-```bash
-uv run detect compare-runs artifacts/faster-mobile artifacts/faster-resnet --metric valid_map_50_95 --output artifacts/model-comparison.csv
-```
-
-The command is read-only except for the optional new CSV. It rejects differing manifest identities and reports semantic configuration differences. Use validation to make choices, then evaluate test once after the choice is fixed. See [experiments](experiments.md) for the complete discipline and [adding models](adding-models.md) for internal extension work.
+A dry run only checks one update. A complete comparison also needs validation
+metrics, per-class results, runtime, and error images. See
+[comparing training runs](experiments.md).

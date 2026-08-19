@@ -2,7 +2,7 @@
 
 [Simplified Chinese](README.zh-CN.md) | [Workflow tutorial](../docs/tutorial/README.md)
 
-Run scripts from the repository root through `uv run python`. Each script has a narrow boundary; none silently trains or evaluates a detector.
+Run scripts from the repository root through `uv run python`. Each script has one clear job; none silently trains or evaluates a detector.
 
 ## Script index
 
@@ -22,7 +22,7 @@ Download is the only script whose normal path can access the network:
 uv run python scripts/download_data.py --data-dir data/raw
 ```
 
-It verifies each archive before extraction and rejects unsafe or conflicting files. Successful download is only the source-data stage. Continue with `detect prepare-data`, then inspect the prepared boundary:
+It verifies each archive before extraction and rejects unsafe or conflicting files. Successful download is only the source-data stage. Continue with `detect prepare-data`, then inspect the prepared data:
 
 ```bash
 uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16
@@ -41,6 +41,6 @@ Regenerate documentation images only as an explicit maintenance action:
 uv run python scripts/generate_doc_assets.py --output-dir docs/assets
 ```
 
-## Evidence boundary
+## Scope
 
-The download and preview scripts establish source integrity and visible annotation behavior, not learning quality. The metrics plot visualizes recorded loss columns but does not recompute metrics or certify convergence. Documentation assets are synthetic diagrams. None of these outputs is a full VOC result; a future evidence-complete run must satisfy the [recorded-run publication gate](../docs/recorded-run/README.md).
+The download and preview scripts check source files and make annotations visible; they do not measure model quality. The metrics plot displays recorded loss columns but does not recompute metrics or show convergence. Documentation assets are synthetic diagrams. None of these outputs is a full VOC result. The completed result is documented in the [Kaggle training record](../docs/recorded-run/README.md).

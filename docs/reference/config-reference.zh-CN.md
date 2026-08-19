@@ -2,7 +2,7 @@
 
 [English](config-reference.md) | [配置流程](../concepts/configuration-flow.zh-CN.md)
 
-本参考面向 YAML 配方和 `--set` 覆盖的作者。`AppConfig` 使用严格结构：未知区域或字段会失败，映射不能替代标量字段，错误值也不会静默回退。
+本参考面向 YAML 配置和 `--set` 覆盖的作者。`AppConfig` 使用严格结构：未知区域或字段会失败，映射不能替代标量字段，错误值也不会静默回退。
 
 ## 解析顺序与来源跟踪
 
@@ -25,7 +25,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 | `data.horizontal_flip` | `0.5` | [0, 1] 内有限数值 | 只用于训练；同步翻转图像和检测框。 |
 | `data.max_train_samples` | `null` | `null` 或 >= 1 的整数 | 同时限制训练和评估选择 train 划分时使用的前若干行；改变训练语义，也不能再声明完整划分结果。 |
 | `data.max_valid_samples` | `null` | `null` 或 >= 1 的整数 | 限制训练和评估使用的验证样本。 |
-| `data.max_test_samples` | `null` | `null` 或 >= 1 的整数 | 限制测试评估；有界分数不是完整 VOC 证据。 |
+| `data.max_test_samples` | `null` | `null` 或 >= 1 的整数 | 限制测试评估；少量样本分数不是完整 VOC 结果。 |
 
 ## 模型字段
 

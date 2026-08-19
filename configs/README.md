@@ -1,42 +1,62 @@
-# Configuration Recipes
+# Training Configurations
 
-[Simplified Chinese](README.zh-CN.md) | [Configuration reference](../docs/reference/config-reference.md)
+[简体中文](README.zh-CN.md) | [Configuration field reference](../docs/reference/config-reference.md)
 
-Configuration values resolve in this order: typed defaults, YAML, then repeated `--set KEY VALUE` overrides. A runtime `--device` override is applied last where the command supports it. Inspect the result before building a model:
+Values are combined in this order: defaults, YAML, then `--set KEY VALUE`.
+Inspect the final values before training:
 
 ```bash
-uv run detect show-config --config configs/learning_minimal.yaml
+uv run detect show-config --config configs/reference_fasterrcnn.yaml
 ```
 
-This prints resolved YAML and value sources. It does not load data, construct a model, contact the network, or write training artifacts.
+This command only prints configuration. It does not load data, construct a
+model, or start training.
 
-## Shipped recipes
+## Included configurations
 
-| File | Role and scope | Network behavior | Expected training artifacts |
-|---|---|---|---|
-| `learning_minimal.yaml` | Default learning route using Faster R-CNN MobileNet V3 Large 320 FPN, 2 epochs, and train/valid/test limits of 32/16/16 | Offline model construction with `weights: none`; source data must already be local | A bounded run under `artifacts/run` unless `run_name` is overridden, containing `config.yaml`, `run.yaml`, `metrics.csv`, `best.pt`, and `last.pt` |
-| `fasterrcnn_resnet50_fpn.yaml` | Short unbounded comparison recipe for Faster R-CNN ResNet-50 FPN; omitted fields inherit typed defaults | Offline model construction with `weights: none`; no dataset download occurs | The standard run artifact set; because there are no sample limits, do not mistake its 2 epochs for the bounded learning recipe or for an evidence-complete reference run |
-| `ssdlite320_mobilenet_v3.yaml` | Short unbounded comparison recipe for SSDLite 320 MobileNet V3 Large; omitted fields inherit typed defaults | Offline model construction with `weights: none`; no dataset download occurs | The standard run artifact set, suitable for a controlled model-family comparison after assigning a unique `run_name` |
-| `reference_fasterrcnn.yaml` | Full VOC reference recipe using Faster R-CNN MobileNet V3 Large 320 FPN, 26 epochs, step scheduling, and no sample limits; the checked-in defaults are CPU-safe | `weights: imagenet1k_v1` needs the pinned backbone weight in the torch cache or network access to download it | `artifacts/reference-fasterrcnn` with the standard run files; the recorded Kaggle run separately preserves its CUDA/AMP overrides and evaluation artifacts |
+| File | Use | Weights and network access |
+|---|---|---|
+| `reference_fasterrcnn.yaml` | Main Kaggle training: Faster R-CNN MobileNet V3, 26 epochs, full VOC | `imagenet1k_v1`; requires a download or existing cache |
+| `learning_minimal.yaml` | Local dry run or small-sample code check | `none`; random initialization and no weight download |
+| `fasterrcnn_resnet50_fpn.yaml` | Try a larger Faster R-CNN backbone | `none`; no weight download by default |
+| `ssdlite320_mobilenet_v3.yaml` | Try the one-stage SSDLite model | `none`; no weight download by default |
 
-## Choosing a recipe
+The complete training result published by the project comes only from the
+Kaggle v7 run of `reference_fasterrcnn.yaml`. No full VOC result is published
+for the other configurations.
 
-Use `learning_minimal.yaml` to learn `download -> prepare -> inspect -> dry run -> train -> evaluate -> predict`. Its sample limits make it a bounded learning run. Use either short model-family recipe only after inspecting resolved defaults and giving the run a unique name, for example:
+## Recommended choice
+
+For a first training run, use the Kaggle runner. It loads
+`reference_fasterrcnn.yaml` and changes the device, AMP, worker count, and paths
+for Kaggle. See the [Kaggle guide](../docs/guides/kaggle.md).
+
+To check one local data and model update, use:
+
+```bash
+uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
+```
+
+When comparing models, give each run a different name and keep data, seed,
+epochs, and optimizer fixed:
 
 ```bash
 uv run detect train --config configs/ssdlite320_mobilenet_v3.yaml --set run_name ssdlite-check --dry-run --device cpu
 ```
 
-Expected dry-run output is batch diagnostics, named finite losses, and `dry-run OK`; no run directory or checkpoint is written.
+A dry run saves no checkpoint and does not mean the model finished training.
 
-Use `reference_fasterrcnn.yaml` only when the official prepared data and compute budget are ready. One evidence-complete execution is published in the [recorded run](../docs/recorded-run/README.md): its Kaggle runner changed operational fields to CUDA, AMP, two workers, and Kaggle paths, while preserving the model and optimization recipe. A YAML file by itself is still not result evidence.
+## What a run saves
 
-## Artifact and comparison rules
+A normal training directory contains `config.yaml`, `run.yaml`, `metrics.csv`,
+`best.pt`, and `last.pt`. Keep `config.yaml`: it records the actual result after
+defaults, YAML, and command-line overrides are combined.
 
-A normal training command writes the resolved configuration rather than merely copying the input YAML. Preserve `config.yaml`, `run.yaml`, `metrics.csv`, and both checkpoints together. Assign a distinct `run_name` to avoid mixing experiments. `detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95` accepts only compatible run directories with matching manifest identities:
+Compare two compatible runs with:
 
 ```bash
 uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95 --output artifacts/comparison.csv
 ```
 
-The command prints a comparison table and writes the optional CSV. It does not train, evaluate the reserved test split, or make two differently prepared datasets comparable.
+Use validation to compare settings and evaluate test only after choices are
+finished.

@@ -1,78 +1,106 @@
-# Troubleshooting by Boundary
+# Troubleshooting
 
-[Simplified Chinese](troubleshooting.zh-CN.md) | [Configuration reference](../reference/config-reference.md)
+[简体中文](troubleshooting.zh-CN.md) | [Kaggle guide](kaggle.md)
 
-Use the smallest command that crosses the failing boundary. Preserve manifests, checkpoints, and existing output directories until the cause is known.
+Start with the earliest error in the log. Later nbconvert warnings usually come
+from Kaggle generating the results page and are not the training failure.
 
-## Installation or parser failure
+## Kaggle fails immediately after submission
 
-```bash
-uv run detect --version
-uv run detect show-config --config configs/learning_minimal.yaml
-```
+### `expected one project archive, found []`
 
-- `unknown configuration field: ...`: fix the exact YAML or `--set` path; unknown keys never pass through.
-- `... must be ...`: YAML typed the value differently or it violates the documented range. Remember that `null` and `~` become Python `None`, while `none` remains a string.
-- `invalid override`: `--set` values are parsed as YAML, so malformed YAML fails before training.
-- Argparse `usage:` with exit 2: the option belongs to a different subcommand or has a missing/invalid value. For the training surface, check `uv run detect train --help`.
+This is an old runner that expects a manually attached source archive. The
+current v7 [`run_kaggle.py`](../recorded-run/kaggle/run_kaggle.py) embeds its
+source. Confirm that metadata points to this file and submit again.
 
-`show-config` reads no dataset, constructs no model, contacts no network, and writes no artifacts. Its `sources` mapping shows whether each leaf came from `default`, `yaml`, or `cli`.
+### `New Datasets cannot be attached in non-interactive sessions`
 
-## Data preparation or loading failure
+This is an older version that calls `kagglehub.dataset_download` while running.
+The current runner needs neither a Dataset nor `kagglehub`; `dataset_sources`
+should be empty.
 
-- `... split has ... images; expected ...`: the tree is not complete official VOC 2007. Redownload or repair it. Use `--allow-nonstandard-counts` only for an intentional VOC-shaped fixture.
-- `split contains duplicate image IDs` or `split overlap`: fix the split files; no partial manifest replacement occurs.
-- `missing image`, `missing annotation`, filename mismatch, dimensions disagreement, invalid XML, unknown class, or nonpositive box: fix the named source sample, then rerun preparation.
-- Training later reports an image-size mismatch: source content changed after preparation. Reprepare and use the new identity.
+### `no kernel image is available for execution on the device`
 
-Inspect both structure and pixels:
+The job received a Tesla P100. The current Kaggle PyTorch build does not support
+P100 `sm_60`. Select a T4 or newer GPU in Settings and create a new version.
 
-```bash
-uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16
-uv run python scripts/preview_dataset.py data/manifests --data-dir data/raw --split valid --limit 4 --output artifacts/dataset-preview.png
-```
+### The page shows T4 x2, but only one GPU works
 
-Preparation and inspection do not create `dataset-preview.png`; only the preview script does. Its `--output` path is overwritten without prompting when that PNG already exists, so choose a new path when preserving earlier evidence. A successful parser does not prove that a custom coordinate convention looks correct.
+This is expected. The project trains on one GPU and uses only `cuda:0`. Do not
+stop a job that continues to print heartbeats.
 
-## Preflight or model construction failure
+## Kaggle remains Running
 
-- `missing train.csv, ...`: `data.manifest_dir` does not contain the required prepared files.
-- `expected 21, dataset requires ...`: `model.expected_num_classes` must equal background plus metadata classes.
-- `CUDA was requested but is unavailable` or `MPS was requested but is unavailable`: use an available device or fix the environment.
-- `unsupported device`: use `auto`, `cpu`, `mps`, or a valid `cuda...` string.
-- `cannot write below ...`: choose a writable `output_dir`.
-- A notice says a weight is not cached: network is needed during construction unless the exact torchvision cache file is supplied. Choose `model.weights=none` for a guaranteed offline model path.
-- `unknown model` or an unexpected keyword error: use `list-models` and `model-info`; correct `model.name` or `model.params`.
+The full run takes about 50-60 minutes. If the log prints
+`{"phase": "training", "status": "running"}` every 60 seconds, the job is
+healthy. Act only when heartbeats stop and the page reports an error; use the
+first traceback.
 
-## Dry run or training failure
+## Kaggle CLI problems
 
-```bash
-uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
-```
+- `kaggle: command not found`: run `uv tool install kaggle` and ensure the uv
+  tool directory is on PATH.
+- The API returns unauthorized: run `kaggle auth login --force`.
+- Kernel ID is not found: make the username in metadata and the query identical.
+- GPU is unavailable: complete Kaggle account verification and check your
+  weekly GPU quota.
 
-- `non-finite <loss> for image IDs [...]`: inspect the reported samples, coordinates, labels, learning rate, and full-precision CPU path. Do not silently skip the batch.
-- Out-of-memory from the backend: lower `train.batch_size`, reduce model-owned input size through documented model parameters, or choose a different model. This changes the experiment and requires a new run.
-- An existing run directory is rejected: choose a new `run_name`; a fresh run never appends to existing files.
-- AMP expectations differ: scaling is enabled only on CUDA, and autocast is enabled only on CPU/CUDA, so a resolved MPS device always uses full precision. Current preflight prints the MPS notice only when configured `device` is exactly `mps`; `device=auto` can resolve to MPS without that notice.
+## VOC download or preparation fails
 
-Finite losses and `dry-run OK` prove one connected update, not convergence or detection quality.
+- Download cannot connect: confirm Kaggle Internet is enabled; the official
+  host may also be temporarily unavailable.
+- MD5 differs: do not bypass the check; download the archive again.
+- Split counts are not `2501 / 2510 / 4952`: confirm complete official VOC 2007.
+- An image or XML file is missing: rerun download and preparation rather than
+  editing generated CSV files to hide it.
+- Custom data has different counts: use `--allow-nonstandard-counts` and state
+  clearly that it is not an official VOC result.
 
-## Resume, evaluation, or prediction failure
+## Local environment problems
 
-- `resume identity mismatch`: model name, ordered classes, manifest identity, or exact preprocessing changed. Start a new run or restore the matching inputs.
-- `resume configuration changes training semantics`: only total epochs, worker count, device, output directory, and run name may change.
-- Requested epochs are not greater than checkpoint epoch: increase `train.epochs`.
-- Resume destination is unrelated and nonempty: point `run_name` at the checkpoint parent or use an empty new destination.
-- Historical best checkpoint is unavailable or incompatible: when resuming `last.pt` into a different empty run, restore the matching sibling `best.pt`; alternatively resume directly from a valid `best.pt` into a new empty run, or use its exact original path in place only when `last.pt` is missing.
-- Resume reports invalid metric history, a historical-best `lineage_id`, strict-best-history, or CUDA RNG mismatch: restore unedited lineage checkpoints. Every configured validation value must be finite and `best_metric` must equal the complete-history maximum. CUDA metadata must name an explicit device such as `cuda:0`, and its RNG entries are checked against that checkpoint's own `run_metadata.cuda_device_count`, not against `last.pt`.
-- `unsupported schema_version`, restricted `weights_only=True` primitive/container/tensor load failure, or preprocessing-contract failure: the file is corrupt, untrusted, or not schema v1. Do not fall back to unrestricted pickle loading. Schema v1 intentionally contains safe primitive values, lists/mappings, and tensors.
-- Evaluation reports manifest mismatch: restore the prepared data matching the checkpoint. Prediction can still run without manifests because it makes no dataset metric claim.
-- Evaluation or prediction output exists: preserve it and choose a new path, or use `--overwrite` only after deciding replacement is intentional.
+- `uv sync --locked` fails: use Python 3.10-3.12 and keep the committed `uv.lock`.
+- Another `object_detector` is imported: inspect `uv run python -c "import object_detector; print(object_detector.__file__)"`.
+- Local CUDA is unavailable: use Kaggle; reserve CPU for examples and dry runs.
+- An operation fails on MPS: retry with `--device cpu` and
+  `data.num_workers=0` to isolate the device issue.
 
-## Metrics look wrong
+## Training fails
 
-AP receives raw model predictions. Evaluation `--score-threshold` changes serialized predictions and images, not AP/AR. Error classification instead uses checkpoint configuration `evaluation.error_score_threshold` and `evaluation.error_iou_threshold`. Difficult targets are excluded from ordinary target counts and misses; their matching predictions become `ignored`.
+- Pretrained weight download fails: confirm Internet or place the expected
+  weight in the Torch Hub cache.
+- A loss is NaN / Inf: inspect the reported image IDs, boxes, labels, and
+  learning rate; reproduce in full precision first.
+- GPU memory is exhausted: reduce `train.batch_size` or image size and use a new
+  run name for changed settings.
+- `best.pt` differs from `last.pt`: the final epoch is not always the best
+  validation epoch; this is normal.
+- Output directory already exists: change `run_name` for a new training run.
 
-Random initialization and bounded two-epoch runs may produce near-zero metrics. Inspect `evaluation.json`, `per_class.csv`, `errors.csv`, and `visualizations/` before forming a hypothesis. The reference recipe alone is not evidence; compare artifact structure with the [recorded run](../recorded-run/README.md), not just its score.
+## Resume fails
 
-When reporting a failure, include the exact command, concise error, resolved config, manifest identity, checkpoint schema/hash when relevant, framework versions, device, and Git revision. Remove private paths and data. See the [code tour](../concepts/code-tour.md) for module ownership.
+- Prefer `last.pt` from the same run; it contains the newest optimizer,
+  scheduler, and random state.
+- Model, classes, data identity, batch size, learning rate, or augmentation
+  differs: start a new run for those changes.
+- Requested epoch total is not greater than completed epochs: set
+  `train.epochs` to a larger target.
+- Checkpoint version is unsupported or corrupt: do not disable safe loading;
+  use a valid file produced by this project.
+
+## Evaluation or prediction fails
+
+- Data identity differs during evaluation: use the prepared data that trained
+  the checkpoint.
+- Prediction does not need VOC, but the checkpoint must contain a supported
+  model name, classes, and preprocessing information.
+- Output directory contains files: choose a new directory; use `--overwrite`
+  only after deciding the old result is no longer needed.
+- JSON has more predictions than PNG: `--display-limit` only limits drawing.
+
+## Metrics look very low
+
+Near-zero values from random weights or a small dry run are normal and are not
+training scores. For a complete run, inspect `metrics.csv`, `evaluation.json`,
+`per_class.csv`, `errors.csv`, and prediction images in that order. Confirm
+completed epochs, best epoch, and data counts before diagnosing the model.
+Compare with the [Kaggle v7 record](../recorded-run/README.md) when useful.

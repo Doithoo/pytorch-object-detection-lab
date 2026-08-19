@@ -2,7 +2,7 @@
 
 [Simplified Chinese](metrics.zh-CN.md) | [Evaluation tutorial](../tutorial/05-evaluation-and-inference.md)
 
-This reference is for reading training history, AP/AR reports, error rows, and evidence images. Metric values are unitless fractions, not percentages. The [recorded full-VOC run](../recorded-run/README.md) is one concrete example; bounded runs and an unexecuted recipe are not equivalent evidence.
+This reference is for reading training history, AP/AR reports, error rows, and evaluation images. Metric values are unitless fractions, not percentages. The [Kaggle training record](../recorded-run/README.md) is one concrete example; small runs and an unexecuted configuration are not comparable results.
 
 ## Training `metrics.csv`
 
@@ -25,7 +25,7 @@ Faster R-CNN contributes exactly `loss_classifier`, `loss_box_reg`, `loss_object
 
 The backend is `torchmetrics.detection.MeanAveragePrecision(box_format="xyxy", iou_type="bbox", class_metrics=True)`, backed by `pycocotools`.
 
-| Field | Contract |
+| Field | Meaning |
 |---|---|
 | `map_50_95` | mean AP over IoU 0.50, 0.55, ..., 0.95 |
 | `map_50` | AP at IoU 0.50 |
@@ -50,7 +50,7 @@ The CLI evaluation writes:
 |---|---|
 | `metrics` | aggregate fields above, including nested `per_class` |
 | `backend_versions` | installed `torchmetrics` and `pycocotools` version strings |
-| `score_threshold` | CLI threshold for serialized predictions and evidence rendering, default 0.05 |
+| `score_threshold` | CLI threshold for serialized predictions and image rendering, default 0.05 |
 | `error_score_threshold` | checkpoint config threshold for error candidates, default 0.5 |
 | `error_iou_threshold` | checkpoint config same-class match threshold, default 0.5 |
 | `max_detections` | supported metric cap, exactly 100 |
@@ -60,7 +60,7 @@ The CLI evaluation writes:
 
 Changing CLI `--score-threshold` changes `predictions.json` and rendered blue boxes, not AP/AR or `prediction_count`. Model-owned postprocessing such as `box_score_thresh` or SSDLite `score_thresh` happens inside the model and therefore can change what reaches the backend.
 
-## CSV and JSON evidence
+## CSV and JSON outputs
 
 `per_class.csv` columns are exactly `class_id,class_name,map_50_95,mar_100`. `predictions.json` is an array of `{image_id, predictions}`; each retained prediction has `box` (four rounded `xyxy` values), `class_id`, `class_name`, and `score`.
 

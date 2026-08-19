@@ -1,42 +1,55 @@
-# 配置配方
+# 训练配置
 
-[English](README.md) | [配置参考](../docs/reference/config-reference.zh-CN.md)
+[English](README.md) | [配置字段参考](../docs/reference/config-reference.zh-CN.md)
 
-配置按“类型化默认值、YAML、重复的 `--set KEY VALUE` 覆盖”解析；支持 `--device` 的命令最后再应用该运行时覆盖。构造模型前先检查结果：
+配置按“默认值 -> YAML -> `--set KEY VALUE`”的顺序合并。开始训练前可以查看最终结果：
 
 ```bash
-uv run detect show-config --config configs/learning_minimal.yaml
+uv run detect show-config --config configs/reference_fasterrcnn.yaml
 ```
 
-该命令输出解析后的 YAML 与每个值的来源，不读取数据、不构造模型、不访问网络，也不写训练产物。
+这条命令只打印配置，不加载数据、不构造模型，也不会开始训练。
 
-## 仓库内配方
+## 项目提供的配置
 
-| 文件 | 作用与范围 | 网络行为 | 预期训练产物 |
-|---|---|---|---|
-| `learning_minimal.yaml` | 默认学习路线，使用 Faster R-CNN MobileNet V3 Large 320 FPN、2 个 epoch，train/valid/test 上限为 32/16/16 | `weights: none`，模型构造离线；源数据必须已经位于本地 | 未覆盖 `run_name` 时，在 `artifacts/run` 写入 `config.yaml`、`run.yaml`、`metrics.csv`、`best.pt`、`last.pt` |
-| `fasterrcnn_resnet50_fpn.yaml` | Faster R-CNN ResNet-50 FPN 的短期无样本上限对比配方；省略字段继承类型化默认值 | `weights: none`，模型构造离线，也不会下载数据集 | 标准运行产物；它虽然只有 2 个 epoch，但既不是有界学习配方，也不是证据完整的参考运行 |
-| `ssdlite320_mobilenet_v3.yaml` | SSDLite 320 MobileNet V3 Large 的短期无样本上限对比配方；省略字段继承类型化默认值 | `weights: none`，模型构造离线，也不会下载数据集 | 标准运行产物；设置唯一 `run_name` 后可用于受控的模型家族对比 |
-| `reference_fasterrcnn.yaml` | 完整 VOC 参考配方，使用 Faster R-CNN MobileNet V3 Large 320 FPN、26 个 epoch、step scheduler，并取消样本上限；仓库默认值可在 CPU 上执行 | `weights: imagenet1k_v1`；torch cache 中必须已有固定 backbone 权重，否则需要网络下载 | `artifacts/reference-fasterrcnn` 中的标准运行文件；已记录 Kaggle 运行另行保存 CUDA/AMP 覆盖项与评估产物 |
+| 文件 | 用途 | 权重与网络 |
+|---|---|---|
+| `reference_fasterrcnn.yaml` | Kaggle 主训练：Faster R-CNN MobileNet V3、26 轮、完整 VOC | `imagenet1k_v1`；需要联网下载或已有缓存 |
+| `learning_minimal.yaml` | 本地 dry run 或少量样本代码检查 | `none`；模型随机初始化，不下载权重 |
+| `fasterrcnn_resnet50_fpn.yaml` | 尝试更大的 Faster R-CNN backbone | `none`；默认不下载权重 |
+| `ssdlite320_mobilenet_v3.yaml` | 尝试单阶段 SSDLite | `none`；默认不下载权重 |
 
-## 如何选择
+项目发布的完整训练结果只来自 `reference_fasterrcnn.yaml` 的 Kaggle v7 运行。其他配置
+没有发布完整 VOC 成绩。
 
-使用 `learning_minimal.yaml` 学习 `download -> prepare -> inspect -> dry run -> train -> evaluate -> predict`。它带有样本上限，属于有界学习运行。两个短期模型家族配方应在检查解析后默认值并设置唯一运行名之后使用，例如：
+## 推荐选择
+
+第一次训练直接使用 Kaggle runner，它会加载 `reference_fasterrcnn.yaml` 并覆盖设备、AMP、
+worker 数量和 Kaggle 路径。步骤见 [Kaggle 指南](../docs/guides/kaggle.zh-CN.md)。
+
+只想在本地确认数据和模型能完成一次更新时，使用：
+
+```bash
+uv run detect train --config configs/learning_minimal.yaml --dry-run --device cpu
+```
+
+想比较模型时，为每次运行设置不同名称，并保持数据、随机种子、训练轮次和优化器一致：
 
 ```bash
 uv run detect train --config configs/ssdlite320_mobilenet_v3.yaml --set run_name ssdlite-check --dry-run --device cpu
 ```
 
-dry run 的预期输出是 batch 诊断、值均为有限数的各项具名 loss，以及 `dry-run OK`；它不会创建运行目录或 checkpoint。
+dry run 不保存 checkpoint，也不代表模型已经训练完成。
 
-只有在官方数据准备完成且算力预算明确时，才使用 `reference_fasterrcnn.yaml`。一次证据完整的执行已经发布在[实测运行](../docs/recorded-run/README.zh-CN.md)中：Kaggle runner 把操作字段改成 CUDA、AMP、两个 worker 与 Kaggle 路径，同时保持模型和优化配方不变。单独一份 YAML 仍然不构成结果证据。
+## 运行后保存什么
 
-## 产物与比较规则
+正常训练目录包含 `config.yaml`、`run.yaml`、`metrics.csv`、`best.pt` 和 `last.pt`。保存
+`config.yaml` 很重要，因为它记录默认值、YAML 和命令行覆盖合并后的实际设置。
 
-正常训练保存的是解析后配置，而不是简单复制输入 YAML。请把 `config.yaml`、`run.yaml`、`metrics.csv` 和两个 checkpoint 一起保留，并用不同 `run_name` 隔离实验。`detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95` 只接受 manifest identity 相同的兼容运行目录：
+比较两个兼容运行：
 
 ```bash
 uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95 --output artifacts/comparison.csv
 ```
 
-该命令输出对比表格并可选写入 CSV；它不会训练，不会评估保留的 test 划分，也不能让两份不同准备的数据变得可比较。
+先使用验证集比较设置，最终测试集只在选择完成后评估。

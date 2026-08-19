@@ -1,66 +1,68 @@
-# 运行受控实验
+# 比较两次训练
 
-[English](experiments.md) | [训练教程](../tutorial/04-training.zh-CN.md)
+[English](experiments.md) | [Kaggle 训练记录](../recorded-run/README.zh-CN.md)
 
-本指南用于在不丢失数据来源、也不把测试集用于反复调参的前提下比较配方。仓库已经有一次[完整 VOC 实测运行](../recorded-run/README.zh-CN.md)，但这项由验证集选择的单次结果只证明其精确配方，不是排行榜，也不能替代受控对比。
+第一次 Kaggle 训练完成后，可以通过只改变一个设置来理解它的影响。项目已经提供一组
+Faster R-CNN MobileNet 结果，可以把它作为已知起点，而不是排行榜。
 
-## 固定证据边界
+## 从一个清楚的问题开始
 
-准备一次数据，记录打印的标识，并在训练前检查源数据：
+合适的问题例如：
 
-```bash
-uv run detect prepare-data --data-dir data/raw --manifest-dir data/manifests
-uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16
-```
+- 相同训练设置下，ResNet-50 backbone 与 MobileNet 有什么差异？
+- 保持模型不变，学习率变化会怎样影响验证指标？
+- Faster R-CNN 与 SSDLite 在相同数据和轮次下表现怎样？
 
-源图像字节、XML、类别、坐标或划分成员只要发生变化，重新准备就会产生不同标识。不能把新运行当作使用旧数据的实验来比较；`compare-runs` 会拒绝不同标识。
+一次不要同时改变模型、权重、学习率和轮次，否则结果很难解释。
 
-## 提出一个假设
+## 保持这些内容不变
 
-从 `configs/learning_minimal.yaml` 开始，指定唯一运行名，并只改变一个语义字段。先检查类型化解析结果：
+- train / valid / test 划分。
+- 随机种子。
+- 训练轮次和样本上限。
+- 优化器、调度器和数据增强。
+- 验证与测试指标。
 
-```bash
-uv run detect show-config --config configs/learning_minimal.yaml --set run_name baseline
-uv run detect show-config --config configs/learning_minimal.yaml --set run_name flip-off --set data.horizontal_flip 0.0
-```
+每次使用不同的 `run_name` 和输出目录，保留各自的 `config.yaml` 和 `metrics.csv`。
 
-创建产物前，分别用试运行证明两条路径：
+## 先检查配置
 
-```bash
-uv run detect train --config configs/learning_minimal.yaml --set run_name baseline --dry-run --device cpu
-uv run detect train --config configs/learning_minimal.yaml --set run_name flip-off --set data.horizontal_flip 0.0 --dry-run --device cpu
-```
-
-试运行会执行一次更新并打印有限损失项，但不会写检查点，也不能证明学习质量。契约通过后，去掉 `--dry-run` 才开始正式运行。新运行会拒绝任何已存在的运行目录，因此不要复用名称。
-
-## 把每次运行作为一个整体保存
-
-完成的训练目录包含：
-
-| 产物 | 证据 |
-|---|---|
-| `config.yaml` | 完整解析配方，而不是简单复制输入 YAML |
-| `run.yaml` | Python、框架、平台、设备、随机种子、Git 修订、清单标识、划分哈希和有序类别 |
-| `metrics.csv` | 每个完成轮次一行，包含训练损失和验证指标 |
-| `best.pt` | 最近一次严格提升验证 `map_50_95` 的检查点 |
-| `last.pt` | 最近完成轮次和续训状态 |
-
-这些文件必须一起保留。续训只能用于延长同一实验；它会恢复优化器、可选调度器、指标历史和随机数状态，所有后代还会继承新训练生成的 `lineage_id`。每个续训检查点都必须记录有限的配置验证指标，并令 `best_metric` 等于完整历史最大值。从 `last.pt` 续训到另一个空运行目录时，必须提供同 lineage 的同级 `best.pt`；其严格历史最大值和语义标识通过验证后才会带入新运行。只有目标是新的空运行目录，或原目录缺少 `last.pt` 且使用原始精确路径时，才可直接从 `best.pt` 续训；原位已有 `last.pt` 时必须使用它。只有 `train.epochs`、`data.num_workers`、`device`、`output_dir` 与 `run_name` 可以不同，而且请求轮次必须大于已保存轮次。其他变化必须开始新运行。
-
-## 用验证集选择，最后只报告一次测试集
-
-使用 `valid_map_50_95` 或其他已记录的验证列比较兼容运行：
+例如只更换模型：
 
 ```bash
-uv run detect compare-runs artifacts/baseline artifacts/flip-off --metric valid_map_50_95 --output artifacts/flip-comparison.csv
+uv run detect show-config --config configs/learning_minimal.yaml --set run_name experiment-a
+uv run detect show-config --config configs/learning_minimal.yaml --set run_name experiment-b --set model.name ssdlite320_mobilenet_v3_large
 ```
 
-命令会对每次运行的最佳行排序，显示语义配置差异，并忽略操作性字段 `run_name`、`output_dir`、`device` 和 `data.num_workers`。差异值遵循排名后的行顺序，并标注为 `run=value`。名称包含 `loss` 的指标按低值优先，其他指标按高值优先。它不会替用户判断某个配方在所有场景下都更好。
-
-用验证集选择配方和检查点。固定分数与错误分析阈值后，再评估一次保留测试集：
+本地可以先做 dry run，确认两种模型都能读取数据并更新一次：
 
 ```bash
-uv run detect evaluate --checkpoint artifacts/baseline/best.pt --split test --output-dir artifacts/baseline/evaluation-test --device cpu
+uv run detect train --config configs/learning_minimal.yaml --set run_name experiment-a --dry-run --device cpu
+uv run detect train --config configs/learning_minimal.yaml --set run_name experiment-b --set model.name ssdlite320_mobilenet_v3_large --dry-run --device cpu
 ```
 
-如果配置包含样本上限，测试结果仍只是有界证据，不是完整 VOC 结果。反复查看测试集再改配方，会把测试集变成另一个验证集。阅读[指标参考](../reference/metrics.zh-CN.md)解释产物；发布任何完整 VOC 结论前，还要满足[记录运行门槛](../recorded-run/README.zh-CN.md)。
+dry run 不保存模型，也不比较精度。正式对比建议在 Kaggle GPU 上使用相同的数据和训练
+预算运行两份配置。
+
+## 比较验证指标
+
+两次训练完成后：
+
+```bash
+uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metric valid_map_50_95 --output artifacts/comparison.csv
+```
+
+命令会为每个运行选择最佳验证行，并列出重要配置差异。除了排名，还要一起看：
+
+- `metrics.csv` 中的变化趋势。
+- 每类 AP 和召回率。
+- 误检与漏检图。
+- 训练时间和显存是否适合你的使用场景。
+
+## 最后再看测试集
+
+使用 valid 选择配置和 checkpoint。确定所有选择后，再对胜出的设置评估一次 test。不要
+根据 test 结果继续反复修改设置。
+
+带样本上限或很少轮次的运行只能说明那次小规模尝试发生了什么。项目当前发布的完整 VOC
+结果仍只有 [Kaggle v7 训练](../recorded-run/README.zh-CN.md)。

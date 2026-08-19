@@ -64,7 +64,7 @@ Run both modes with random synthetic tensors:
 uv run python examples/03_model_contract.py
 ```
 
-Expected output lists Faster R-CNN training loss keys and eval keys `boxes`, `labels`, `scores`. It proves construction and mode shape contracts only. It downloads no weights, trains nothing, and publishes no metric.
+Expected output lists Faster R-CNN training loss keys and eval keys `boxes`, `labels`, `scores`. It checks construction and input/output shapes only. It downloads no weights, trains nothing, and publishes no metric.
 
 ## Training, validation, and atomic run artifacts
 
@@ -72,7 +72,7 @@ The trainer averages each loss by image count. After each epoch, validation send
 
 ```text
 artifacts/<run>/
-  config.yaml   resolved recipe
+  config.yaml   resolved configuration
   run.yaml      environment + manifest identity
   metrics.csv   epoch losses + validation AP/AR/counts
   best.pt       best validation checkpoint
@@ -85,12 +85,12 @@ Text files and checkpoints are written through temporary files and `os.replace`.
 
 Both consumers load schema v1 through `torch.load(..., weights_only=True)`, validate exact preprocessing, rebuild the registered model with `weights="none"`, and load saved state.
 
-Evaluation additionally loads the saved resolved config, requires the current manifest identity to match, reads a labeled split, sends model output to metrics, applies separate serialization and error thresholds, and atomically publishes JSON, CSV, and ranked PNG evidence. Prediction needs only checkpoint plus new images. It restores ordered classes and manifest provenance, but does not load VOC data or claim AP.
+Evaluation additionally loads the saved resolved config, requires the current manifest identity to match, reads a labeled split, sends model output to metrics, applies separate serialization and error thresholds, and atomically publishes JSON, CSV, and ranked PNG images. Prediction needs only checkpoint plus new images. It restores ordered classes and manifest provenance, but does not load VOC data or claim AP.
 
 Directory prediction recursively processes `.jpg`, `.jpeg`, and `.png`, records unreadable images, and publishes a complete staged output tree. Single-image prediction writes one JSON and PNG with overwrite protection; its JSON is atomic, while its PNG is saved directly.
 
-## Evidence ladder and next links
+## What each check tells you
 
-`show-config` proves value resolution. `inspect-data` proves bounded target loading. `train --dry-run` proves one update. A bounded run proves artifact lifecycle. Validation evaluation proves metric integration on the configured subset. None proves a complete VOC result, and the reference YAML is not execution evidence.
+`show-config` checks value resolution. `inspect-data` checks target loading. `train --dry-run` checks one update. A small run checks output creation. Validation evaluation checks metrics on the configured subset. None establishes a complete VOC result, and the reference YAML is not a completed run.
 
 Read [how Faster R-CNN works](how-faster-rcnn-works.md) for internal detector responsibilities, [checkpoint schema](../reference/checkpoint-schema.md) for restoration, and [metrics](../reference/metrics.md) for output semantics.

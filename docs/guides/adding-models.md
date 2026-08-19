@@ -1,10 +1,10 @@
 # Add an Internal Model
 
-[Simplified Chinese](adding-models.zh-CN.md) | [Model contract tutorial](../tutorial/03-faster-rcnn.md)
+[Simplified Chinese](adding-models.zh-CN.md) | [Model behavior tutorial](../tutorial/03-faster-rcnn.md)
 
 This maintainer guide is for adding a detector that teaches a distinct family or controlled tradeoff. Version 0.1 has no stable external plugin API and does not load arbitrary `module:function` factories. Adding a model means changing and testing the repository; checkpoints never serialize executable user code.
 
-## Implement the constructor contract
+## Implement the constructor
 
 Put torchvision-specific construction in `src/object_detector/models/torchvision_models.py`:
 
@@ -25,7 +25,7 @@ The returned module must follow torchvision detection modes:
 | `train()` | `list[Tensor[3,H,W]]`, `list[target]` | nonempty mapping of finite scalar loss tensors |
 | `eval()` | image list only | one mapping per image with `boxes`, `labels`, `scores` |
 
-Do not adapt this contract in the CLI or trainer. The checkpoint-only prediction path rebuilds the registered architecture with `weights="none"`, applies saved state, and depends on stable name and parameter semantics.
+Do not reinterpret this interface in the CLI or trainer. Checkpoint-only prediction rebuilds the registered architecture with `weights="none"`, applies saved state, and depends on stable names and parameter meanings.
 
 ## Register metadata
 
@@ -43,4 +43,4 @@ uv run detect list-models
 uv run detect model-info fasterrcnn_mobilenet_v3_large_320_fpn
 ```
 
-Add a YAML recipe only when it represents a coherent comparison, then run `show-config` and a CPU dry run. Do not publish a performance claim from successful construction, finite losses, or a bounded run. Update the bilingual [model zoo](../reference/model-zoo.md), guide links, packaging declarations when needed, and the ADR if the extension changes the external-code boundary.
+Add a YAML configuration only when it represents a coherent comparison, then run `show-config` and a CPU dry run. Do not publish a performance claim from successful construction, finite losses, or a small run. Update the bilingual [model reference](../reference/model-zoo.md), guide links, packaging declarations when needed, and the ADR if the extension changes how external code interacts with the project.

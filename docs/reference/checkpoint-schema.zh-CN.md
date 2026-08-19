@@ -4,13 +4,13 @@
 
 本参考面向检查点使用者、续训故障排查和产物审计。项目检查点可以独立完成预测，但评估仍需要与之匹配的已准备标注数据。当前只接受结构版本 `1`。
 
-结构版本 `1` 已为首次 `0.1` 发布冻结。更早的本地开发检查点虽然也写有 `schema_version: 1`，但若缺少 `lineage_id` 或 `run_metadata.cuda_device_count`，则有意不兼容；应重新生成，而不是放宽校验。本项目没有需要迁移的已发布检查点契约。
+结构版本 `1` 已为首次 `0.1` 发布冻结。更早的本地开发检查点虽然也写有 `schema_version: 1`，但若缺少 `lineage_id` 或 `run_metadata.cuda_device_count`，则有意不兼容；应重新生成，而不是放宽校验。本项目没有需要迁移的已发布检查点规则。
 
 ## 顶层映射
 
 | 字段 | 类型 | 职责 |
 |---|---|---|
-| `schema_version` | 整数 `1` | 选择对应的兼容契约。 |
+| `schema_version` | 整数 `1` | 选择对应的兼容规则。 |
 | `lineage_id` | 非空字符串 | 新训练生成、所有续训后代继承的稳定标识。 |
 | `config` | 映射 | 完整解析后的 `AppConfig`，包含路径、上限、模型、训练、评估、设备、输出与运行名。 |
 | `model` | 映射 | 重建架构所需的注册表 `name` 和构造器 `params`。 |
@@ -30,7 +30,7 @@
 
 `model` 仅包含 `{"name": 字符串, "params": 映射}`。检查点评估与预测用保存的名称和参数、类别数以及 `weights="none"` 调用注册构造器，再加载 `model_state`。预测不需要访问模型权重网络，也不需要输入 YAML。
 
-## 严格预处理契约
+## 严格预处理规则
 
 ```yaml
 resize_owner: torchvision_model
@@ -72,4 +72,4 @@ print(checkpoint["schema_version"], checkpoint["epoch"])
 
 续训时不能改变批大小、优化器、调度器、学习率、增强、样本上限、随机种子、混合精度、模型参数、权重策略或评估设置。原位续训必须使用已有 `last.pt`；只要它存在，`best.pt` 或旧副本就会被拒绝。若 `last.pt` 缺失，只允许该运行目录中路径完全匹配的 `best.pt` 原位恢复；其他检查点必须使用新的空运行目录。不同的目标运行目录必须为空。跨目录从 `last.pt` 续训还要求同级 `best.pt` 具有相同 `lineage_id`，且模型、类别、预处理、清单与划分哈希语义完全一致；跨目录从 `best.pt` 续训则直接使用该检查点。允许变化的续训设置与执行环境可能不同，因此无需逐项相等比较完整配置和运行元数据快照。每个可续训检查点都要求配置的验证指标历史值为有限且非布尔的数值，并要求 `best_metric` 等于完整历史最大值；允许后续轮次与最大值持平。历史 `best.pt` 还要求末行值等于 `best_metric`，并严格大于所有更早值。验证通过后，该 payload 会原子发布为新运行的 `best.pt`，且不会改写其源轮次、解析配置或运行来源信息。不同实验应创建新运行，不能修改检查点字段。
 
-评估还会加载保存配置，要求当前 `dataset.yaml.identity` 等于 `manifest_identity`，记录检查点 SHA-256，并写入新的原子产物目录。预测只需要检查点和输入图像。具体失败边界见[故障排查](../guides/troubleshooting.zh-CN.md)。
+评估还会加载保存配置，要求当前 `dataset.yaml.identity` 等于 `manifest_identity`，记录 checkpoint SHA-256，并写入新的输出目录。预测只需要 checkpoint 和输入图像。具体错误与处理方式见[排错指南](../guides/troubleshooting.zh-CN.md)。

@@ -174,4 +174,4 @@ Tests use synthetic data and temporary files; they do not download VOC or
 pretrained weights. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 The project uses the [MIT License](LICENSE).
 
-<!-- Documentation contract: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->
+<!-- Documentation path: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->

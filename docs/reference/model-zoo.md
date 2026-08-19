@@ -2,7 +2,7 @@
 
 [Simplified Chinese](model-zoo.zh-CN.md) | [Using models](../guides/using-models.md)
 
-This page is the version 0.1 registry contract, not a leaderboard. All three models are torchvision constructors maintained by this repository. There is no stable external model plugin API. The Faster R-CNN MobileNet recipe has one [recorded full-VOC run](../recorded-run/README.md); it does not rank the other models.
+This page lists the version 0.1 model registry; it is not a leaderboard. All three models are torchvision constructors maintained by this repository. There is no stable external model plugin API. The Faster R-CNN MobileNet configuration has one [Kaggle training record](../recorded-run/README.md); it does not rank the other models.
 
 ## Discovery
 
@@ -15,13 +15,13 @@ These commands read registry metadata only. They do not construct a model, inspe
 
 ## Registry entries
 
-| Name | Family | Backbone/input ownership | Shipped recipe and comparison role |
+| Name | Family | Backbone/input ownership | Shipped configuration and comparison role |
 |---|---|---|---|
 | `fasterrcnn_mobilenet_v3_large_320_fpn` | `two_stage` | MobileNet V3 Large with FPN; detector transform defaults to shorter edge 320 and longer-edge cap 640 | Default and tutorial baseline in `configs/learning_minimal.yaml`; teaches backbone/FPN, RPN, and ROI heads |
-| `fasterrcnn_resnet50_fpn` | `two_stage` | ResNet-50 with FPN; detector defaults to shorter edge 800 and longer-edge cap 1333 | `configs/fasterrcnn_resnet50_fpn.yaml`; changes backbone while retaining Faster R-CNN, with more memory and compute than the MobileNet recipe |
-| `ssdlite320_mobilenet_v3_large` | `one_stage` | MobileNet V3 Large; built-in transform resizes to the 320-pixel SSDLite recipe | `configs/ssdlite320_mobilenet_v3.yaml`; compares a one-stage family |
+| `fasterrcnn_resnet50_fpn` | `two_stage` | ResNet-50 with FPN; detector defaults to shorter edge 800 and longer-edge cap 1333 | `configs/fasterrcnn_resnet50_fpn.yaml`; changes backbone while retaining Faster R-CNN, with more memory and compute than the MobileNet configuration |
+| `ssdlite320_mobilenet_v3_large` | `one_stage` | MobileNet V3 Large; built-in transform resizes to the 320-pixel SSDLite configuration | `configs/ssdlite320_mobilenet_v3.yaml`; compares a one-stage family |
 
-The roles above describe architecture and maintained recipes. They do not establish relative accuracy, throughput, convergence, hardware support, or universal suitability.
+The roles above describe architecture and maintained configurations. They do not establish relative accuracy, throughput, convergence, hardware support, or universal suitability.
 
 ## Weight policies
 
@@ -36,7 +36,7 @@ The MobileNet models expect `torch.hub.get_dir()/checkpoints/mobilenet_v3_large-
 
 ## Maintained `model.params`
 
-The registry accepts only these constructor keys. Values are parsed as YAML and passed to torchvision; the project does not add range validation, so upstream constructor/runtime errors remain the value-validation boundary. Misspelled or unmaintained keys fail before construction.
+The registry accepts only these constructor keys. Values are parsed as YAML and passed to torchvision; the project does not add range validation, so torchvision reports invalid values. Misspelled or unmaintained keys fail before construction.
 
 | Model(s) | Key | Upstream default in this constructor | Type/effect |
 |---|---|---:|---|
@@ -62,7 +62,7 @@ model:
 
 `weights`, `weights_backbone`, and `num_classes` are reserved and fail if placed in `model.params`. Any key not listed for the selected model also fails; use `detect model-info MODEL_NAME` to inspect the maintained surface.
 
-## Shared input and mode contract
+## Shared inputs and model modes
 
 All models accept a list of RGB float tensors `[3,H,W]` in `[0,1]`; model-owned transforms normalize, resize, and batch internally. Training receives an aligned target list with zero-based continuous `xyxy` boxes and foreground labels. Train mode returns a nonempty scalar loss mapping; eval mode returns `boxes`, `labels`, and `scores` per image. Faster R-CNN's exact four losses are documented in [how Faster R-CNN works](../concepts/how-faster-rcnn-works.md).
 

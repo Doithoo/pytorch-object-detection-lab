@@ -1,8 +1,8 @@
-# 数据集与清单契约
+# 数据集与清单规则
 
 [English](dataset-format.md) | [VOC 2007 协议](voc2007.zh-CN.md)
 
-本参考定义版本 0.1 唯一的运行时数据集契约，适合数据作者、扩展维护者和实验标识审计者。提供器只接受 VOC 的 20 个类别；任意类别数据集需要修改代码。
+本参考定义版本 0.1 唯一的运行时数据集规则，适合数据作者、扩展维护者和实验标识审计者。提供器只接受 VOC 的 20 个类别；任意类别数据集需要修改代码。
 
 ## 源目录与 XML
 
@@ -49,7 +49,7 @@ VOC 坐标一基且端点包含。解析后得到零基连续 `xyxy`：`(xmin - 
 
 六个文件先写入暂存目录，再作为整体原子替换目标。校验或发布失败时，不会暴露部分新清单。
 
-## 运行时样本契约
+## 运行时样本规则
 
 加载器解码 RGB，并返回缩放到 `[0,1]` 的 `image: float32 Tensor[3,H,W]`。目标结构为：
 
@@ -64,4 +64,4 @@ VOC 坐标一基且端点包含。解析后得到零基连续 `xyxy`：`(xmin - 
 
 训练在增强前移除困难目标；验证、测试、检查和可视化保留它们。空图像和仅困难目标的训练样本仍有效，`boxes` 形状为 `[0,4]`，逐目标向量为 `[0]`。水平翻转会更新检测框；退化框会连同全部对齐字段一起过滤。批处理返回图像列表与目标列表，而不是堆叠张量。
 
-可运行 `uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16` 获取有界结构证据，再参考[使用自己的数据](../guides/using-your-data.zh-CN.md)执行准备和预览。
+可运行 `uv run detect inspect-data --manifest-dir data/manifests --data-dir data/raw --split train --limit 16` 查看少量样本的结构，再参考[使用自己的数据](../guides/using-your-data.zh-CN.md)执行准备和预览。

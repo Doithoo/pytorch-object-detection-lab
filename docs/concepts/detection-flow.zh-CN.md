@@ -64,7 +64,7 @@ Faster R-CNN 的损失键是 `loss_classifier`、`loss_box_reg`、`loss_objectne
 uv run python examples/03_model_contract.py
 ```
 
-预期输出列出 Faster R-CNN 训练损失键，以及评估键 `boxes`、`labels`、`scores`。它只证明构造和模式形状契约，不下载权重、不训练，也不发布指标。
+预期输出列出 Faster R-CNN 训练损失键，以及评估键 `boxes`、`labels`、`scores`。它只检查模型构造和输入输出形状，不下载权重、不训练，也不发布指标。
 
 ## 训练、验证与原子运行产物
 
@@ -72,7 +72,7 @@ uv run python examples/03_model_contract.py
 
 ```text
 artifacts/<运行名>/
-  config.yaml   解析配方
+  config.yaml   解析配置
   run.yaml      环境与清单标识
   metrics.csv   轮次损失、验证 AP/AR 与计数
   best.pt       最佳验证检查点
@@ -83,14 +83,14 @@ artifacts/<运行名>/
 
 ## 从检查点到评估或预测
 
-两个消费者都通过 `torch.load(..., weights_only=True)` 加载版本 1，严格校验预处理契约，用 `weights="none"` 重建注册模型，再加载保存状态。
+两个消费者都通过 `torch.load(..., weights_only=True)` 加载版本 1，严格校验预处理规则，用 `weights="none"` 重建注册模型，再加载保存状态。
 
-评估还会加载保存的解析配置，要求当前清单标识匹配，读取带标签划分，把模型输出交给指标，再应用独立的序列化阈值和错误阈值，并原子发布 JSON、CSV 与排序 PNG 证据。预测只需要检查点和新图像，会恢复有序类别与清单来源，但不加载 VOC 数据，也不声明 AP。
+评估还会加载保存的解析配置，要求当前清单标识匹配，读取带标签划分，把模型输出交给指标，再应用独立的序列化阈值和错误阈值，并写出 JSON、CSV 与排序 PNG 图像。预测只需要检查点和新图像，会恢复有序类别与清单来源，但不加载 VOC 数据，也不声明 AP。
 
 目录预测递归处理 `.jpg`、`.jpeg` 和 `.png`，记录不可读图像，并发布完整暂存输出树。单图预测在防覆盖条件下写一个 JSON 与 PNG；JSON 原子写入，PNG 直接保存。
 
-## 证据层级与后续阅读
+## 每项检查能说明什么
 
-`show-config` 证明值解析，`inspect-data` 证明有界目标加载，`train --dry-run` 证明一次更新，有界运行证明产物生命周期，验证评估证明配置子集上的指标集成。它们都不能证明完整 VOC 结果，参考 YAML 也不是执行证据。
+`show-config` 检查值解析，`inspect-data` 检查目标加载，`train --dry-run` 检查一次更新，小规模运行检查输出创建，验证集评估检查配置子集上的指标。它们都不能建立完整 VOC 结果，参考 YAML 也不是一次已完成训练。
 
 可继续阅读[Faster R-CNN 工作原理](how-faster-rcnn-works.zh-CN.md)了解检测器内部职责，[检查点结构](../reference/checkpoint-schema.zh-CN.md)了解恢复，或阅读[指标](../reference/metrics.zh-CN.md)解释输出。

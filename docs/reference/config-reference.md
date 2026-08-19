@@ -2,7 +2,7 @@
 
 [Simplified Chinese](config-reference.zh-CN.md) | [Configuration flow](../concepts/configuration-flow.md)
 
-This reference is for authors of YAML recipes and `--set` overrides. `AppConfig` is strict: unknown sections and fields fail, mappings cannot replace scalar fields, and validated values do not silently fall back.
+This reference is for authors of YAML configurations and `--set` overrides. `AppConfig` is strict: unknown sections and fields fail, mappings cannot replace scalar fields, and validated values do not silently fall back.
 
 ## Resolution and source tracking
 
@@ -25,7 +25,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 | `data.horizontal_flip` | `0.5` | finite number in [0, 1] | Training only; transforms image and boxes together. |
 | `data.max_train_samples` | `null` | `null` or integer >= 1 | Limits the leading train rows in both training and evaluation when the train split is selected; changes training semantics and prevents a full-split claim. |
 | `data.max_valid_samples` | `null` | `null` or integer >= 1 | Limits validation during training/evaluation. |
-| `data.max_test_samples` | `null` | `null` or integer >= 1 | Limits test evaluation; a bounded score is not full VOC evidence. |
+| `data.max_test_samples` | `null` | `null` or integer >= 1 | Limits test evaluation; a limited-sample score is not a full VOC result. |
 
 ## Model fields
 

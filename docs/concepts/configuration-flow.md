@@ -38,7 +38,7 @@ The stored `artifacts/<run>/config.yaml` contains resolved values without the `s
 
 Then `training.run_training` loads `dataset.yaml`, calls `preflight.validate_training_request`, resolves `auto` to CUDA then MPS then CPU, seeds RNGs, constructs the registered model, and builds datasets/loaders. Preflight checks required manifest files, class count, requested accelerator availability, output destination writability, and whether a named backbone weight is cached. A missing weight is a notice, not an issue; download can occur later in torchvision model construction.
 
-`--dry-run` and `--resume` change orchestration, not the recipe schema. Dry run consumes one training batch and writes no normal run artifacts. Resume points to a schema-versioned checkpoint and is checked against the resolved configuration.
+`--dry-run` and `--resume` change orchestration, not the configuration schema. Dry run consumes one training batch and writes no normal run artifacts. Resume points to a schema-versioned checkpoint and is checked against the resolved configuration.
 
 ## Runtime-only CLI arguments
 
@@ -55,8 +55,8 @@ Then `training.run_training` loads `dataset.yaml`, calls `preflight.validate_tra
 
 Evaluation has no `--config` or `--set`: it validates and loads the resolved config saved in the checkpoint for dataset paths, sample limit, error thresholds, maximum detections, batch size, and workers. Its CLI `--score-threshold` is a separate serialization/visualization threshold and does not replace the saved `evaluation.score_threshold` field in an `AppConfig`. Prediction uses checkpoint model/classes/preprocessing and runtime inputs only.
 
-## Evidence and failure boundaries
+## What each command checks
 
-Use `show-config` to prove text resolution, `train --dry-run` to prove config plus data/model/update integration, a bounded normal run to prove artifact publication, and evaluation to prove checkpoint plus matching manifest metrics. Passing an earlier boundary does not prove a later one.
+Use `show-config` to check text resolution, `train --dry-run` to check one integrated data/model update, a small normal run to check output creation, and evaluation to check checkpoint metrics with matching manifests. Each command covers a different part of the workflow.
 
 Unknown fields or invalid types fail before model construction. Preflight issues fail before a normal run directory is created. Fresh training rejects an existing run directory. Checkpoint and text artifacts are individually atomic; evaluation and directory prediction stage and publish complete output directories. Continue with the [code tour](code-tour.md) for module ownership or the [configuration reference](../reference/config-reference.md) for every leaf.

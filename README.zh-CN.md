@@ -154,4 +154,4 @@ uv run pytest -W error::DeprecationWarning
 测试使用合成数据和临时文件，不会下载 VOC 或预训练权重。贡献代码前请阅读
 [贡献指南](CONTRIBUTING.zh-CN.md)。项目采用 [MIT License](LICENSE)。
 
-<!-- Documentation contract: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->
+<!-- Documentation path: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->

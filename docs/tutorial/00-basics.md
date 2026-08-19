@@ -2,7 +2,7 @@
 
 [Simplified Chinese](00-basics.zh-CN.md) | [Tutorial index](README.md)
 
-This chapter establishes the tensor contract used by every later data, model,
+This chapter introduces the tensor format used by every later data, model,
 training, and evaluation step. You need basic Python indexing and tensor shapes;
 you do not need VOC data, a checkpoint, or network access.
 
@@ -94,12 +94,12 @@ is `10 * 20 = 200`, so the union is `400 + 400 - 200 = 600` and IoU is `1/3`.
 A model confidence score answers a different question and cannot replace IoU.
 Chapter 05 uses both values with separate thresholds.
 
-## Common failure boundaries
+## Common mistakes
 
 - `boxes` has integer dtype, the wrong final dimension, or non-positive width or
   height: data validation/model code fails before meaningful learning.
-- `labels` uses float values or includes background `0`: the class contract is
-  broken even if tensor shapes look plausible.
+- `labels` uses float values or includes background `0`: the class values are
+  wrong even if tensor shapes look plausible.
 - Images are stacked before collation: variable-size samples cannot form one
   rectangular tensor.
 - An empty annotation becomes `torch.tensor([])`: its shape is `[0]`, so reshape

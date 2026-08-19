@@ -2,7 +2,7 @@
 
 [Simplified Chinese](how-faster-rcnn-works.zh-CN.md) | [Tutorial chapter](../tutorial/03-faster-rcnn.md)
 
-This page is for readers who know tensors but want to assign responsibilities inside the maintained Faster R-CNN models. It explains the public torchvision contract, not a reimplementation.
+This page is for readers who know tensors and want a closer look at the maintained Faster R-CNN models. It explains torchvision's public inputs and outputs rather than reimplementing the model.
 
 ## Model-owned image transform
 
@@ -19,7 +19,7 @@ padded images [B,3,H,W]
   -> feature maps {level: [B,C,Hk,Wk]}
 ```
 
-These maps are shared evidence for proposals and ROI classification. They are not yet boxes or VOC class predictions.
+These maps are shared features for proposals and ROI classification. They are not yet boxes or VOC class predictions.
 
 ## Region Proposal Network
 
@@ -56,16 +56,16 @@ The exact Faster R-CNN loss set is therefore `loss_classifier`, `loss_box_reg`, 
 
 Each prediction has `boxes: float32 [M,4]`, `labels: int64 [M]`, and `scores: float32 [M]`. `M` varies per image. Evaluation does not accept targets to request losses; training does not return predictions for metric interpretation.
 
-Run the real contract offline:
+Run the real model behavior offline:
 
 ```bash
 uv run python examples/03_model_contract.py
 ```
 
-Expected output names the four losses and the three prediction keys. The example constructs `fasterrcnn_mobilenet_v3_large_320_fpn` with `weights="none"` and synthetic tensors. It performs forward passes only, does not update parameters, and provides no accuracy evidence.
+Expected output names the four losses and the three prediction keys. The example constructs `fasterrcnn_mobilenet_v3_large_320_fpn` with `weights="none"` and synthetic tensors. It performs forward passes only, does not update parameters, and reports no accuracy.
 
-## Failure and evidence boundaries
+## Input mistakes to avoid
 
-Labels must start at 1 because 0 is background. Boxes must be finite, positive-area, zero-based continuous `xyxy`. Images and targets must remain one-to-one lists. A dry run extends the example by performing one optimizer update on prepared data; a bounded training run adds validation and artifacts. Neither is the [separately recorded full-VOC result](../recorded-run/README.md).
+Labels must start at 1 because 0 is background. Boxes must be finite, positive-area, zero-based continuous `xyxy`. Images and targets must remain one-to-one lists. A dry run extends the example with one optimizer update on prepared data; a small run adds validation and outputs. Neither is the [completed Kaggle VOC training run](../recorded-run/README.md).
 
 Continue with [Tutorial 04](../tutorial/04-training.md) for optimization and artifact ownership, or read the [model reference](../reference/model-zoo.md) to compare the two Faster R-CNN backbones with SSDLite.

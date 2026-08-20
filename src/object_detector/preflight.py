@@ -59,7 +59,7 @@ def validate_training_request(config: AppConfig, metadata: DatasetMetadata) -> P
     if not is_writable_destination(config.output_dir):
         issues.append(PreflightIssue("output_dir", f"cannot write below {config.output_dir}"))
 
-    if config.model.weights != "none":
+    if config.model.weights != "none" and config.model.factory is None:
         cached = expected_weight_cache_path(config.model.name, config.model.weights)
         if not cached.is_file():
             notices.append(

@@ -149,13 +149,27 @@ def build_model(
     num_classes: int,
     weights: str = "none",
     params: Mapping[str, object] | None = None,
+    *,
+    factory: str | None = None,
 ) -> nn.Module:
     if num_classes < 2:
         raise ModelConfigError("num_classes must include background and at least one object class")
+    model_params = dict(params or {})
+    if factory is not None:
+        from object_detector.models.extensions import ExtensionError, build_external_model
+
+        try:
+            return build_external_model(
+                factory,
+                num_classes=num_classes,
+                weights=weights,
+                params=model_params,
+            )
+        except ExtensionError as exc:
+            raise ModelConfigError(str(exc)) from exc
     spec = get_model_spec(name)
     if weights not in spec.supported_weights:
         raise ModelConfigError(f"{name} does not support weights={weights!r}")
-    model_params = dict(params or {})
     reserved = {"weights", "weights_backbone", "num_classes"}
     collision = reserved & model_params.keys()
     if collision:

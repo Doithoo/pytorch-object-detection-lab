@@ -2,11 +2,14 @@
 
 [Simplified Chinese](adding-models.zh-CN.md) | [Model behavior tutorial](../tutorial/03-faster-rcnn.md)
 
-This maintainer guide is for adding a detector that teaches a distinct family or controlled tradeoff. Version 0.1 has no stable external plugin API and does not load arbitrary `module:function` factories. Adding a model means changing and testing the repository; checkpoints never serialize executable user code.
+This maintainer guide covers registered built-in detectors and explicit external
+`module:function` factories. Checkpoints never serialize executable user code;
+external checkpoints record the factory path and require that same importable
+factory at restore time.
 
 ## Implement the constructor
 
-Put torchvision-specific construction in `src/object_detector/models/torchvision_models.py`:
+For a built-in detector, put torchvision-specific construction in `src/object_detector/models/torchvision_models.py`:
 
 ```python
 def build_detector(
@@ -15,6 +18,27 @@ def build_detector(
     params: Mapping[str, object],
 ) -> torch.nn.Module: ...
 ```
+
+For an external detector, set `model.factory` to an importable
+`module:function`. The factory receives `num_classes`, `weights`, and every key
+under `model.params`, and must return a `torch.nn.Module` using the same
+list-of-images / target-list contract described above. The project validates
+loss mappings in train mode and `boxes`/`labels`/`scores` mappings in eval mode.
+
+```yaml
+model:
+  name: my_detector
+  factory: my_package.models:build_detector
+  weights: none
+  expected_num_classes: 4
+  params:
+    width: 32
+```
+
+External factories are deliberately explicit. A checkpoint can be safely read
+without executing factory code, but prediction, evaluation, or resume will
+import the recorded path before reconstructing the model. A missing or changed
+factory must fail clearly.
 
 `num_classes` includes background. `weights="none"` must pass `weights=None` and `weights_backbone=None` and must not contact the network. Every named policy must map to one pinned torchvision enum and expose a URL from which preflight can derive the expected cache filename. Pass `params` as constructor keywords only after project-owned arguments are fixed.
 

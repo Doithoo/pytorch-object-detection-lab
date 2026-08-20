@@ -91,12 +91,7 @@ def run_training(
     device = resolve_device(config.device)
     _seed_everything(config.train.seed)
     class_names = ("background", *metadata.class_names)
-    model = model_factory(
-        config.model.name,
-        len(class_names),
-        config.model.weights,
-        config.model.params,
-    ).to(device)
+    model = _build_configured_model(config, model_factory, len(class_names)).to(device)
     optimizer = _build_optimizer(config, model)
     scheduler = _build_scheduler(config, optimizer)
     train_dataset = VocDetectionDataset.from_manifests(
@@ -248,6 +243,20 @@ def run_training(
     return RunResult(run_dir=run_dir, completed_epochs=max(config.train.epochs, start_epoch - 1))
 
 
+def _build_configured_model(config: AppConfig, model_factory: ModelFactory, num_classes: int) -> nn.Module:
+    if config.model.factory is not None:
+        if model_factory is not build_model:
+            raise ValueError("external model factories require the default model builder")
+        return build_model(
+            config.model.name,
+            num_classes,
+            config.model.weights,
+            config.model.params,
+            factory=config.model.factory,
+        )
+    return model_factory(config.model.name, num_classes, config.model.weights, config.model.params)
+
+
 def _evaluate_validation(
     model: nn.Module,
     loader: DataLoader,
@@ -311,7 +320,11 @@ def _checkpoint_payload(
         "schema_version": 1,
         "lineage_id": lineage_id,
         "config": config_to_dict(config),
-        "model": {"name": config.model.name, "params": dict(config.model.params)},
+        "model": {
+            "name": config.model.name,
+            "factory": config.model.factory,
+            "params": dict(config.model.params),
+        },
         "weight_policy": config.model.weights,
         "class_names": list(class_names),
         "preprocessing": _preprocessing_metadata(),

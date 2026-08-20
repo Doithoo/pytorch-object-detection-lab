@@ -31,7 +31,8 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 | 字段 | 默认值 | 接受值 | 重要关系 |
 |---|---:|---|---|
-| `model.name` | `fasterrcnn_mobilenet_v3_large_320_fpn` | 非空字符串；构造时检查注册表 | 用 `detect list-models` 发现名称；续训标识要求名称相同。 |
+| `model.name` | `fasterrcnn_mobilenet_v3_large_320_fpn` | 非空字符串；设置 `model.factory` 时不要求注册表成员 | 用 `detect list-models` 发现内置名称；续训标识要求名称和工厂设置相同。 |
+| `model.factory` | `null` | `null` 或 `module:function` | 显式外部检测器工厂。工厂会收到 `num_classes`、`weights` 和 `model.params`；恢复 checkpoint 时会导入记录的路径。 |
 | `model.weights` | `none` | `none` 或 `imagenet1k_v1` | `none` 离线；`imagenet1k_v1` 只请求固定骨干网络权重，可能需要缓存或网络。检查点恢复始终用 `none` 重建。 |
 | `model.expected_num_classes` | `21` | >= 2 的整数，拒绝布尔值 | 预检查要求等于背景加清单类别；VOC 为 21。模型实际使用元数据推导的数量。 |
 | `model.params` | `{}` | 映射 | 作为 torchvision 构造关键字传入；`weights`、`weights_backbone`、`num_classes` 为保留项。见[模型目录](model-zoo.zh-CN.md)。 |

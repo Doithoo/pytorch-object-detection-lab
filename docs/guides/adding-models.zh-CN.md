@@ -2,11 +2,11 @@
 
 [English](adding-models.md) | [模型规则教程](../tutorial/03-faster-rcnn.zh-CN.md)
 
-本指南面向需要加入不同检测器家族或受控对比模型的维护者。版本 0.1 没有稳定的外部插件接口，也不会加载任意 `module:function` 工厂。添加模型意味着修改并测试仓库；检查点不会序列化用户的可执行代码。
+本指南面向需要加入不同检测器家族或受控对比模型的维护者，也说明显式外部 `module:function` 工厂。检查点不会序列化用户的可执行代码；外部模型会记录工厂路径，并在恢复时要求该路径仍可导入。
 
 ## 实现构造器
 
-torchvision 专用构造逻辑放在 `src/object_detector/models/torchvision_models.py`：
+内置 detector 的 torchvision 专用构造逻辑放在 `src/object_detector/models/torchvision_models.py`：
 
 ```python
 def build_detector(
@@ -15,6 +15,20 @@ def build_detector(
     params: Mapping[str, object],
 ) -> torch.nn.Module: ...
 ```
+
+外部 detector 可以把 `model.factory` 设置为可导入的 `module:function`。工厂会收到 `num_classes`、`weights` 以及 `model.params` 下的所有键，并返回遵守同一图像列表/目标列表协议的 `torch.nn.Module`。项目会在训练模式校验 loss 映射，在评估模式校验 `boxes`、`labels`、`scores` 映射。
+
+```yaml
+model:
+  name: my_detector
+  factory: my_package.models:build_detector
+  weights: none
+  expected_num_classes: 4
+  params:
+    width: 32
+```
+
+外部工厂必须显式指定。检查点可以在不执行工厂代码的情况下安全读取，但预测、评估或续训会在重建模型前导入记录的路径。工厂缺失或发生变化时必须明确失败。
 
 `num_classes` 包含背景类。`weights="none"` 必须传入 `weights=None` 和 `weights_backbone=None`，且不能访问网络。每个具名策略必须映射到一个固定的 torchvision 枚举，并提供可供预检查推导缓存文件名的 URL。项目自有参数固定后，才能把 `params` 作为构造器关键字传入。
 

@@ -85,9 +85,10 @@ class Predictor:
             raise CheckpointCompatibilityError("checkpoint field manifest_identity must be a nonempty string")
         params = require_mapping(model_data, "params", prefix="model")
         model_name = model_data.get("name")
-        if not isinstance(model_name, str):
-            raise CheckpointCompatibilityError("checkpoint field model.name must be a string")
-        model = model_factory(model_name, len(class_names), "none", params)
+        factory = model_data.get("factory")
+        if not isinstance(model_name, str) or not isinstance(factory, (str, type(None))):
+            raise CheckpointCompatibilityError("checkpoint field model.name/factory is invalid")
+        model = _build_checkpoint_model(model_factory, model_name, len(class_names), factory, params)
         model.load_state_dict(dict(require_mapping(checkpoint, "model_state")))
         resolved_device = resolve_device(device)
         model.to(resolved_device).eval()
@@ -213,6 +214,20 @@ class Predictor:
 def _validate_score_threshold(value: float) -> None:
     if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0.0 <= value <= 1.0:
         raise ValueError("score_threshold must be a number between 0 and 1")
+
+
+def _build_checkpoint_model(
+    model_factory: ModelFactory,
+    model_name: str,
+    num_classes: int,
+    factory: str | None,
+    params: Mapping[str, object],
+) -> nn.Module:
+    if factory is not None:
+        if model_factory is not build_model:
+            raise CheckpointCompatibilityError("external model factories require the default model builder")
+        return build_model(model_name, num_classes, "none", params, factory=factory)
+    return model_factory(model_name, num_classes, "none", params)
 
 
 def require_mapping(

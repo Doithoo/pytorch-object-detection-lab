@@ -23,3 +23,7 @@ class FakeDetector(nn.Module):
             }
             for image in images
         ]
+
+
+def build_external_detector(*, num_classes: int, weights: str, **_params: object) -> nn.Module:
+    return FakeDetector()

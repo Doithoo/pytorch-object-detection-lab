@@ -31,7 +31,8 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 | Field | Default | Accepted value | Important interaction |
 |---|---:|---|---|
-| `model.name` | `fasterrcnn_mobilenet_v3_large_320_fpn` | nonempty string; registry membership checked at construction | Discover names with `detect list-models`. Resume identity requires the same name. |
+| `model.name` | `fasterrcnn_mobilenet_v3_large_320_fpn` | nonempty string; registry membership checked at construction unless `model.factory` is set | Discover built-in names with `detect list-models`. Resume identity requires the same name and factory setting. |
+| `model.factory` | `null` | `null` or `module:function` | Explicit external detector factory. The factory receives `num_classes`, `weights`, and `model.params`; checkpoint restore imports the recorded path. |
 | `model.weights` | `none` | `none` or `imagenet1k_v1` | `none` is offline. `imagenet1k_v1` requests only the pinned backbone weight and may need cache/network access. Checkpoint restore always reconstructs with `none`. |
 | `model.expected_num_classes` | `21` | integer >= 2, Boolean rejected | Preflight requires background plus manifest classes, which is 21 for VOC. The model uses the metadata-derived count. |
 | `model.params` | `{}` | mapping | Passed as torchvision constructor keywords. `weights`, `weights_backbone`, and `num_classes` are reserved. See the [model zoo](model-zoo.md). |

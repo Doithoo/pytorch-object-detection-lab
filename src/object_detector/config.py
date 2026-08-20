@@ -28,6 +28,7 @@ class DataConfig:
 @dataclass(frozen=True)
 class ModelConfig:
     name: str = "fasterrcnn_mobilenet_v3_large_320_fpn"
+    factory: str | None = None
     weights: str = "none"
     expected_num_classes: int = 21
     params: dict[str, object] = field(default_factory=dict)
@@ -206,6 +207,8 @@ def _validate_config(config: AppConfig) -> None:
             _require_integer(f"data.{field_name}", value, minimum=1)
 
     _require_nonempty_string("model.name", config.model.name)
+    if config.model.factory is not None:
+        _require_nonempty_string("model.factory", config.model.factory)
     if config.model.weights not in {"none", "imagenet1k_v1"}:
         raise ConfigError("model.weights must be 'none' or 'imagenet1k_v1'")
     _require_integer("model.expected_num_classes", config.model.expected_num_classes, minimum=2)

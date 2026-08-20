@@ -13,7 +13,7 @@
 | `schema_version` | 整数 `1` | 选择对应的兼容规则。 |
 | `lineage_id` | 非空字符串 | 新训练生成、所有续训后代继承的稳定标识。 |
 | `config` | 映射 | 完整解析后的 `AppConfig`，包含路径、上限、模型、训练、评估、设备、输出与运行名。 |
-| `model` | 映射 | 重建架构所需的注册表 `name` 和构造器 `params`。 |
+| `model` | 映射 | `name` 注册表名称或用户名称，可选的 `factory` `module:function`，以及重建架构所需的构造器 `params`。 |
 | `weight_policy` | 字符串 | 训练来源（`none` 或 `imagenet1k_v1`）；恢复时不会重新下载。 |
 | `class_names` | 非空有序序列 | `background` 在首位，随后是前景名称；用于恢复标签含义。 |
 | `preprocessing` | 严格映射 | 输入处理所有权和表示，见下文。 |
@@ -28,7 +28,7 @@
 | `run_metadata` | 映射 | 环境和运行标识快照。 |
 | `rng_state` | 映射 | 续训所需的 Python、NumPy、torch、CUDA 和数据加载器生成器状态。 |
 
-`model` 仅包含 `{"name": 字符串, "params": 映射}`。检查点评估与预测用保存的名称和参数、类别数以及 `weights="none"` 调用注册构造器，再加载 `model_state`。预测不需要访问模型权重网络，也不需要输入 YAML。
+`model` 包含 `name`、`factory`（内置模型为 null，外部模型为显式 `module:function` 路径）和 `params`。检查点评估与预测用保存的名称和参数、类别数以及 `weights="none"` 调用注册构造器或外部工厂，再加载 `model_state`。预测不需要访问模型权重网络，也不需要输入 YAML。外部工厂代码只在重建模型时导入；`load_checkpoint` 不会执行它。
 
 ## 严格预处理规则
 

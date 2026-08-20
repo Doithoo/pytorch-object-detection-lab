@@ -23,6 +23,13 @@ def test_cli_can_set_a_model_parameter_and_report_its_source() -> None:
     assert sources["model.params.min_size"] == "cli"
 
 
+def test_config_accepts_external_model_factory() -> None:
+    config = load_config(overrides=[("model.factory", "tests.fixtures.models:build_external_detector")])
+
+    assert config.model.factory == "tests.fixtures.models:build_external_detector"
+    assert config_to_dict(config)["model"]["factory"] == "tests.fixtures.models:build_external_detector"
+
+
 def test_unknown_field_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "bad.yaml"
     path.write_text("train:\n  epochz: 3\n", encoding="utf-8")

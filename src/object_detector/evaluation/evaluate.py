@@ -73,9 +73,10 @@ def evaluate_checkpoint(
     model_data = _checkpoint_mapping(checkpoint, "model")
     model_name = model_data.get("name")
     params = model_data.get("params", {})
-    if not isinstance(model_name, str) or not isinstance(params, Mapping):
+    factory = model_data.get("factory")
+    if not isinstance(model_name, str) or not isinstance(factory, (str, type(None))) or not isinstance(params, Mapping):
         raise CheckpointCompatibilityError("checkpoint model specification is invalid")
-    model = model_factory(model_name, len(class_names), "none", dict(params))
+    model = _build_checkpoint_model(model_factory, model_name, len(class_names), factory, dict(params))
     model.load_state_dict(dict(_checkpoint_mapping(checkpoint, "model_state")))
     resolved_device = resolve_device(device)
     model.to(resolved_device)
@@ -227,6 +228,20 @@ def _publish_directory(stage: Path, destination: Path, *, overwrite: bool) -> No
         raise
     if backup is not None:
         shutil.rmtree(backup, ignore_errors=True)
+
+
+def _build_checkpoint_model(
+    model_factory: ModelFactory,
+    model_name: str,
+    num_classes: int,
+    factory: str | None,
+    params: Mapping[str, object],
+) -> nn.Module:
+    if factory is not None:
+        if model_factory is not build_model:
+            raise CheckpointCompatibilityError("external model factories require the default model builder")
+        return build_model(model_name, num_classes, "none", params, factory=factory)
+    return model_factory(model_name, num_classes, "none", params)
 
 
 def _cpu_prediction(prediction: Mapping[str, torch.Tensor]) -> dict[str, torch.Tensor]:

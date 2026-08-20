@@ -5,13 +5,45 @@ import subprocess
 import sys
 
 import pytest
+import torch
 import torch.nn as nn
 
 from object_detector.models import torchvision_models
 from object_detector.models.registry import ModelConfigError, build_model, get_model_spec, list_models
 
 
-def test_registry_metadata_import_is_lightweight_in_fresh_process() -> None:
+def test_external_factory_builds_and_validates_detector_contract() -> None:
+    model = build_model(
+        "custom_detector",
+        3,
+        "none",
+        {"size": 320},
+        factory="tests.fixtures.models:build_external_detector",
+    )
+    images = [torch.zeros(3, 12, 12)]
+    targets = [
+        {
+            "boxes": torch.tensor([[1.0, 1.0, 8.0, 8.0]]),
+            "labels": torch.tensor([1]),
+            "image_id": torch.tensor([1]),
+        }
+    ]
+
+    model.train()
+    losses = model(images, targets)
+    assert isinstance(losses, dict)
+    assert set(losses) == {"loss_classifier", "loss_box_reg"}
+
+    model.eval()
+    predictions = model(images)
+    assert isinstance(predictions, list)
+    assert predictions[0]["labels"].tolist() == [1]
+
+
+def test_external_factory_errors_are_reported_as_model_config_errors() -> None:
+    with pytest.raises(ModelConfigError, match="expected module:function"):
+        build_model("custom_detector", 3, factory="invalid")
+
     script = """
 import json
 import sys

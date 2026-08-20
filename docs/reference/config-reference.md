@@ -18,7 +18,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 | Field | Default | Accepted value | Important interaction |
 |---|---:|---|---|
-| `data.name` | `voc2007` | string, exactly `voc2007` | No other provider is implemented. |
+| `data.name` | `voc2007` | string, exactly `voc2007` or `coco` | Selects the prepared annotation provider. `coco` uses the COCO JSON preparation command. |
 | `data.data_dir` | `data/raw` | path-compatible string | Runtime appends `dataset.yaml.dataset_root`; evaluation uses the path saved in the checkpoint config. |
 | `data.manifest_dir` | `data/manifests` | path-compatible string | Must contain `train.csv`, `valid.csv`, `test.csv`, `dataset.yaml`; identity must match the checkpoint for evaluation/resume. |
 | `data.num_workers` | `0` | integer >= 0, Boolean rejected | Operational resume field; used by train and evaluation DataLoaders. |

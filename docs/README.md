@@ -45,6 +45,7 @@ The completed Kaggle T4 run and its real outputs are in the
 | What do metrics and output files mean? | [Metrics reference](reference/metrics.md) |
 | What is inside a checkpoint? | [Checkpoint format](reference/checkpoint-schema.md) |
 | How do I use my own data? | [Custom data guide](guides/using-your-data.md) |
+| How do I prepare COCO JSON data? | [COCO data guide](guides/using-coco.md) |
 | How do I compare two runs? | [Experiment guide](guides/experiments.md) |
 
 When adding a dataset or model, or changing internal behavior, continue to

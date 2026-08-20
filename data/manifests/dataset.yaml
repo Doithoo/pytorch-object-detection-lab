@@ -56,4 +56,5 @@ manifest_hashes:
   test: 76c5aafd4e91990606b9823e937cbd329bcd27d5d72c0215b52bc3dc3d3014a7
 identity: b9bdc2604322c07f26c9a0135a063c7702b0dfb261171401076cf6733cfdb5b7
 coordinate_convention: zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries
-schema_version: 2
+schema_version: 3
+annotation_format: voc

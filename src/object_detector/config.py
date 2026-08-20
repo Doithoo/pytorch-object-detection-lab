@@ -195,7 +195,7 @@ def _construct_config(values: dict[str, Any]) -> AppConfig:
 
 
 def _validate_config(config: AppConfig) -> None:
-    _require_choice("data.name", config.data.name, {"voc2007"})
+    _require_choice("data.name", config.data.name, {"voc2007", "coco"})
     _require_integer("data.num_workers", config.data.num_workers, minimum=0)
     _require_probability("data.horizontal_flip", config.data.horizontal_flip)
     for field_name, value in (

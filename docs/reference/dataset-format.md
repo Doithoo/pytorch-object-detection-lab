@@ -39,7 +39,8 @@ Rows preserve split-file order. The CSV files reference source data; they do not
 | `manifest_hashes` | mapping each split to a SHA-256 digest of the exact CSV bytes |
 | `identity` | combined SHA-256 experiment identity |
 | `coordinate_convention` | exact string `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
-| `schema_version` | integer manifest schema version, currently `2` |
+| `schema_version` | integer manifest schema version, currently `3` |
+| `annotation_format` | `voc` or `coco`; selects the annotation parser |
 
 `split_hashes` cover source content and `manifest_hashes` cover the exact published CSV bytes. Runtime loading validates the schema version, class order and label mapping, split counts, CSV hashes, and metadata identity before constructing a dataset. If any manifest file changes, regenerate the manifests instead of editing it by hand.
 

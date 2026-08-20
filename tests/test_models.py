@@ -87,6 +87,7 @@ def test_package_public_exports_remain_available() -> None:
             "VocObject",
             "detection_collate",
             "parse_voc_annotation",
+            "prepare_coco",
             "prepare_voc2007",
             "render_detection_preview",
         ],

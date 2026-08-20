@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -40,6 +41,12 @@ class VocDetectionDataset(Dataset[tuple[torch.Tensor, DetectionTarget]]):
         self.metadata = metadata
         self.training = training
         self.transforms = transforms
+        self._coco_annotations: dict[str, list[dict[str, object]]] = {}
+        self._coco_categories: dict[int, str] = {}
+        if metadata.annotation_format == "coco":
+            if not self.rows:
+                raise DatasetError("COCO split is empty and cannot identify its annotation file")
+            self._load_coco_annotations(self.dataset_root / self.rows[0].annotation_path)
 
     @classmethod
     def from_manifests(
@@ -75,6 +82,8 @@ class VocDetectionDataset(Dataset[tuple[torch.Tensor, DetectionTarget]]):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, DetectionTarget]:
         row = self.rows[index]
         image_path = self.dataset_root / row.image_path
+        if self.metadata.annotation_format == "coco":
+            return self._get_coco_item(row, image_path)
         annotation = parse_voc_annotation(
             self.dataset_root / row.annotation_path,
             allowed_classes=self.metadata.class_names,
@@ -106,6 +115,65 @@ class VocDetectionDataset(Dataset[tuple[torch.Tensor, DetectionTarget]]):
         }
         if self.training:
             target = select_objects(target, ~difficult)
+        if self.transforms is not None:
+            image, target = self.transforms(image, target)
+        target, _ = filter_degenerate_boxes(target)
+        return image, target
+
+    def _load_coco_annotations(self, path: Path) -> None:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DatasetError(f"cannot read COCO annotations {path}: {exc}") from exc
+        if not isinstance(raw, dict):
+            raise DatasetError(f"COCO annotations {path} must contain a mapping")
+        categories = raw.get("categories")
+        annotations = raw.get("annotations")
+        if not isinstance(categories, list) or not isinstance(annotations, list):
+            raise DatasetError(f"COCO annotations {path} are missing categories or annotations")
+        for category in categories:
+            if (
+                isinstance(category, dict)
+                and isinstance(category.get("id"), int)
+                and isinstance(category.get("name"), str)
+            ):
+                self._coco_categories[category["id"]] = category["name"]
+        for annotation in annotations:
+            if isinstance(annotation, dict) and isinstance(annotation.get("image_id"), int):
+                self._coco_annotations.setdefault(str(annotation["image_id"]), []).append(annotation)
+
+    def _get_coco_item(self, row: ManifestRow, image_path: Path) -> tuple[torch.Tensor, DetectionTarget]:
+        try:
+            with Image.open(image_path) as source:
+                image = pil_to_tensor(source.convert("RGB")).float().div(255.0)
+        except OSError as exc:
+            raise DatasetError(f"cannot read image {image_path}: {exc}") from exc
+        width, height = image.shape[-1], image.shape[-2]
+        boxes: list[list[float]] = []
+        labels: list[int] = []
+        difficult: list[bool] = []
+        for annotation in self._coco_annotations.get(row.image_id, []):
+            category_id = annotation.get("category_id")
+            category_name = self._coco_categories.get(category_id) if isinstance(category_id, int) else None
+            bbox = annotation.get("bbox")
+            if category_name is None or not isinstance(bbox, list) or len(bbox) != 4:
+                raise DatasetError(f"invalid COCO annotation for image {row.image_id}")
+            x, y, box_width, box_height = (float(value) for value in bbox)
+            boxes.append([max(x, 0.0), max(y, 0.0), min(x + box_width, width), min(y + box_height, height)])
+            labels.append(self.metadata.label_by_name[category_name])
+            difficult.append(bool(annotation.get("iscrowd", 0)))
+        box_tensor = torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4)
+        difficult_tensor = torch.tensor(difficult, dtype=torch.bool)
+        target: DetectionTarget = {
+            "boxes": box_tensor,
+            "labels": torch.tensor(labels, dtype=torch.int64),
+            "image_id": torch.tensor([_numeric_image_id(row.image_id)], dtype=torch.int64),
+            "area": (box_tensor[:, 2] - box_tensor[:, 0]) * (box_tensor[:, 3] - box_tensor[:, 1]),
+            "iscrowd": difficult_tensor.to(dtype=torch.int64),
+            "difficult": difficult_tensor,
+        }
+        if self.training:
+            target = select_objects(target, ~difficult_tensor)
         if self.transforms is not None:
             image, target = self.transforms(image, target)
         target, _ = filter_degenerate_boxes(target)

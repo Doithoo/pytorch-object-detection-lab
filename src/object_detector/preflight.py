@@ -40,6 +40,10 @@ def validate_training_request(config: AppConfig, metadata: DatasetMetadata) -> P
     if missing:
         issues.append(PreflightIssue("data.manifest_dir", "missing " + ", ".join(missing)))
 
+    if config.data.name != metadata.name:
+        issues.append(
+            PreflightIssue("data.name", f"configured {config.data.name!r}, prepared dataset is {metadata.name!r}")
+        )
     actual_num_classes = len(metadata.class_names) + 1
     if config.model.expected_num_classes != actual_num_classes:
         issues.append(

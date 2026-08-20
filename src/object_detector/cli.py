@@ -45,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_data = subparsers.add_parser("prepare-data", help="validate VOC 2007 and write fixed manifests")
     prepare_data.add_argument("--data-dir", type=Path, default=Path("data/raw"))
     prepare_data.add_argument("--manifest-dir", type=Path, default=Path("data/manifests"))
+    prepare_data.add_argument("--format", choices=("voc", "coco"), default="voc")
+    prepare_data.add_argument("--images-dir", type=Path, default=Path("images"))
+    prepare_data.add_argument("--train-annotations", type=Path)
+    prepare_data.add_argument("--valid-annotations", type=Path)
+    prepare_data.add_argument("--test-annotations", type=Path)
     prepare_data.add_argument("--allow-nonstandard-counts", action="store_true")
     prepare_data.set_defaults(handler=_prepare_data)
 
@@ -158,10 +163,31 @@ def _compare_runs(args: argparse.Namespace) -> int:
 
 
 def _prepare_data(args: argparse.Namespace) -> int:
-    from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_voc2007
+    from object_detector.data.manifest import VOC2007_SPLIT_COUNTS, prepare_coco, prepare_voc2007
 
-    expected_counts = None if args.allow_nonstandard_counts else VOC2007_SPLIT_COUNTS
-    metadata = prepare_voc2007(args.data_dir, args.manifest_dir, expected_split_counts=expected_counts)
+    if args.format == "coco":
+        annotation_files = {
+            "train": args.train_annotations,
+            "valid": args.valid_annotations,
+            "test": args.test_annotations,
+        }
+        if any(path is None for path in annotation_files.values()):
+            raise ValueError(
+                "COCO preparation requires --train-annotations, --valid-annotations, and --test-annotations"
+            )
+        metadata = prepare_coco(
+            args.data_dir,
+            args.manifest_dir,
+            {
+                split: (path if path.is_absolute() else args.data_dir / path)
+                for split, path in annotation_files.items()
+                if path is not None
+            },
+            images_dir=args.images_dir,
+        )
+    else:
+        expected_counts = None if args.allow_nonstandard_counts else VOC2007_SPLIT_COUNTS
+        metadata = prepare_voc2007(args.data_dir, args.manifest_dir, expected_split_counts=expected_counts)
     counts = metadata.split_counts
     print(f"identity={metadata.identity}")
     print(f"train={counts['train']} valid={counts['valid']} test={counts['test']}")

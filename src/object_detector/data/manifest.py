@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
+from typing import cast
 
 import yaml
 from PIL import Image, UnidentifiedImageError
@@ -18,7 +19,7 @@ from PIL import Image, UnidentifiedImageError
 from object_detector.data.voc import VocFormatError, parse_voc_annotation
 
 VOC2007_SPLIT_COUNTS = {"train": 2501, "valid": 2510, "test": 4952}
-MANIFEST_SCHEMA_VERSION = 2
+MANIFEST_SCHEMA_VERSION = 3
 MANIFEST_COLUMNS = ["image_id", "image_path", "annotation_path"]
 COORDINATE_CONVENTION = "zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries"
 
@@ -39,6 +40,7 @@ class DatasetMetadata:
     identity: str
     coordinate_convention: str
     schema_version: int = MANIFEST_SCHEMA_VERSION
+    annotation_format: str = "voc"
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,7 @@ def prepare_voc2007(
         raise ManifestError("annotations contain no object classes")
     split_hashes = {name: _rows_hash(items, voc_root) for name, items in rows.items()}
     manifest_hashes = {name: _manifest_hash(items) for name, items in rows.items()}
-    identity = _identity_for(class_names, split_hashes)
+    identity = _identity_for("voc2007", class_names, split_hashes)
 
     metadata = DatasetMetadata(
         name="voc2007",
@@ -91,8 +93,59 @@ def prepare_voc2007(
         manifest_hashes=manifest_hashes,
         identity=identity,
         coordinate_convention=COORDINATE_CONVENTION,
+        annotation_format="voc",
     )
     _write_manifests(manifest_dir, rows, metadata)
+    return metadata
+
+
+def prepare_coco(
+    data_dir: Path,
+    manifest_dir: Path,
+    annotation_files: Mapping[str, Path],
+    *,
+    images_dir: Path = Path("images"),
+    expected_split_counts: Mapping[str, int] | None = None,
+) -> DatasetMetadata:
+    split_names = ("train", "valid", "test")
+    if set(annotation_files) != set(split_names):
+        raise ManifestError("COCO annotation_files must define train, valid, and test")
+    raw_by_split = {split: _read_coco_json(path) for split, path in annotation_files.items()}
+    categories = _coco_categories(raw_by_split)
+    rows_by_split: dict[str, tuple[ManifestRow, ...]] = {}
+    for split in split_names:
+        raw = raw_by_split[split]
+        if not isinstance(raw.get("images"), list):
+            raise ManifestError("COCO images must be a list")
+        if expected_split_counts is not None and len(cast(list[object], raw["images"])) != expected_split_counts[split]:
+            raise ManifestError(
+                f"{split} split has {len(cast(list[object], raw['images']))} images; expected {expected_split_counts[split]}"
+            )
+        rows_by_split[split] = _validate_coco_split(
+            data_dir,
+            images_dir,
+            annotation_files[split],
+            raw,
+            categories,
+        )
+    split_ids = {split: tuple(row.image_id for row in rows) for split, rows in rows_by_split.items()}
+    _validate_disjoint(split_ids)
+    class_names = tuple(sorted(categories.values()))
+    split_hashes = {split: _coco_rows_hash(rows, data_dir) for split, rows in rows_by_split.items()}
+    manifest_hashes = {split: _manifest_hash(rows) for split, rows in rows_by_split.items()}
+    metadata = DatasetMetadata(
+        name="coco",
+        dataset_root=".",
+        class_names=class_names,
+        label_by_name={name: index for index, name in enumerate(class_names, start=1)},
+        split_counts={split: len(rows) for split, rows in rows_by_split.items()},
+        split_hashes=split_hashes,
+        manifest_hashes=manifest_hashes,
+        identity=_identity_for("coco", class_names, split_hashes),
+        coordinate_convention=COORDINATE_CONVENTION,
+        annotation_format="coco",
+    )
+    _write_manifests(manifest_dir, rows_by_split, metadata)
     return metadata
 
 
@@ -116,11 +169,101 @@ def load_dataset_metadata(manifest_dir: Path) -> DatasetMetadata:
             identity=str(raw["identity"]),
             coordinate_convention=str(raw["coordinate_convention"]),
             schema_version=int(raw["schema_version"]),
+            annotation_format=str(raw.get("annotation_format", "voc")),
         )
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         raise ManifestError(f"{path}: invalid dataset metadata: {exc}") from exc
     _validate_metadata(metadata, manifest_dir)
     return metadata
+
+
+def _read_coco_json(path: Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ManifestError(f"cannot read COCO annotations {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ManifestError(f"{path}: COCO root must be a mapping")
+    for key in ("images", "annotations", "categories"):
+        if not isinstance(value.get(key), list):
+            raise ManifestError(f"{path}: COCO field {key!r} must be a list")
+    return value
+
+
+def _coco_categories(raw_by_split: Mapping[str, Mapping[str, object]]) -> dict[int, str]:
+    categories: dict[int, str] = {}
+    for raw in raw_by_split.values():
+        for item in cast(list[object], raw["categories"]):
+            if (
+                not isinstance(item, Mapping)
+                or not isinstance(item.get("id"), int)
+                or not isinstance(item.get("name"), str)
+            ):
+                raise ManifestError("COCO categories require integer id and string name")
+            category_id = item["id"]
+            name = item["name"].strip()
+            if not name or (category_id in categories and categories[category_id] != name):
+                raise ManifestError("COCO category IDs must map to one nonempty name")
+            categories[category_id] = name
+    if not categories or len(set(categories.values())) != len(categories):
+        raise ManifestError("COCO categories must be nonempty and have unique names")
+    return categories
+
+
+def _validate_coco_split(
+    data_dir: Path,
+    images_dir: Path,
+    annotation_path: Path,
+    raw: Mapping[str, object],
+    categories: Mapping[int, str],
+) -> tuple[ManifestRow, ...]:
+    try:
+        annotation_relative = annotation_path.resolve().relative_to(data_dir.resolve()).as_posix()
+    except ValueError as exc:
+        raise ManifestError(f"{annotation_path}: annotation file must be below data_dir") from exc
+    image_items = cast(list[object], raw["images"])
+    image_by_id: dict[int, Mapping[str, object]] = {}
+    rows: list[ManifestRow] = []
+    for image in image_items:
+        if not isinstance(image, Mapping) or not isinstance(image.get("id"), int) or image["id"] in image_by_id:
+            raise ManifestError(f"{annotation_path}: COCO image IDs must be unique integers")
+        file_name = image.get("file_name")
+        width = image.get("width")
+        height = image.get("height")
+        if not isinstance(file_name, str) or not file_name or not isinstance(width, int) or not isinstance(height, int):
+            raise ManifestError(f"{annotation_path}: COCO images require file_name, width, and height")
+        _validate_relative_path(file_name, annotation_path, 0)
+        image_path = data_dir / images_dir / file_name
+        try:
+            with Image.open(image_path) as decoded:
+                if decoded.size != (width, height):
+                    raise ManifestError(f"{annotation_path}: image dimensions disagree for {file_name}")
+                decoded.verify()
+        except (OSError, UnidentifiedImageError) as exc:
+            raise ManifestError(f"cannot decode COCO image {image_path}: {exc}") from exc
+        image_by_id[image["id"]] = image
+        rows.append(
+            ManifestRow(
+                image_id=str(image["id"]),
+                image_path=(images_dir / file_name).as_posix(),
+                annotation_path=annotation_relative,
+            )
+        )
+    annotation_ids: set[int] = set()
+    for annotation in cast(list[object], raw["annotations"]):
+        if not isinstance(annotation, Mapping):
+            raise ManifestError(f"{annotation_path}: COCO annotations must be mappings")
+        image_id = annotation.get("image_id")
+        category_id = annotation.get("category_id")
+        bbox = annotation.get("bbox")
+        if image_id not in image_by_id or category_id not in categories or not isinstance(bbox, list) or len(bbox) != 4:
+            raise ManifestError(f"{annotation_path}: invalid COCO annotation reference or bbox")
+        if any(isinstance(value, bool) or not isinstance(value, int | float) for value in bbox):
+            raise ManifestError(f"{annotation_path}: COCO bbox values must be numeric")
+        if bbox[2] <= 0 or bbox[3] <= 0:
+            raise ManifestError(f"{annotation_path}: COCO bbox width and height must be positive")
+        annotation_ids.add(image_id)
+    return tuple(rows)
 
 
 def read_manifest(path: Path) -> tuple[ManifestRow, ...]:
@@ -159,9 +302,15 @@ def _validate_metadata(metadata: DatasetMetadata, manifest_dir: Path) -> None:
             f"{manifest_dir / 'dataset.yaml'}: unsupported schema_version {metadata.schema_version!r}; "
             "regenerate manifests"
         )
-    if metadata.name != "voc2007":
+    if metadata.name not in {"voc2007", "coco"}:
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: unsupported dataset {metadata.name!r}")
-    if metadata.dataset_root != "VOCdevkit/VOC2007":
+    if metadata.annotation_format not in {"voc", "coco"}:
+        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: unsupported annotation_format")
+    if metadata.name == "voc2007" and metadata.annotation_format != "voc":
+        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: VOC metadata must use annotation_format=voc")
+    if metadata.name == "coco" and metadata.annotation_format != "coco":
+        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: COCO metadata must use annotation_format=coco")
+    if metadata.annotation_format == "voc" and metadata.dataset_root != "VOCdevkit/VOC2007":
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: dataset_root is not the VOC 2007 root")
     if not metadata.class_names or len(set(metadata.class_names)) != len(metadata.class_names):
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: class_names must be a nonempty unique sequence")
@@ -180,7 +329,7 @@ def _validate_metadata(metadata: DatasetMetadata, manifest_dir: Path) -> None:
     ):
         if set(values) != expected_splits:
             raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: {field_name} must define train, valid, and test")
-    expected_identity = _identity_for(metadata.class_names, metadata.split_hashes)
+    expected_identity = _identity_for(metadata.name, metadata.class_names, metadata.split_hashes)
     if metadata.identity != expected_identity:
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: identity does not match metadata contents")
     for split_name in ("train", "valid", "test"):
@@ -203,16 +352,19 @@ def verify_prepared_data(data_dir: Path, metadata: DatasetMetadata, manifest_dir
     voc_root = data_dir / metadata.dataset_root
     for split_name, rows in rows_by_split.items():
         try:
-            actual_hash = _rows_hash(rows, voc_root)
+            if metadata.annotation_format == "coco":
+                actual_hash = _coco_rows_hash(rows, voc_root)
+            else:
+                actual_hash = _rows_hash(rows, voc_root)
         except OSError as exc:
             raise ManifestError(f"cannot verify {split_name} source files below {voc_root}: {exc}") from exc
         if actual_hash != metadata.split_hashes[split_name]:
             raise ManifestError(f"{split_name} source files do not match dataset metadata")
 
 
-def _identity_for(class_names: Sequence[str], split_hashes: Mapping[str, str]) -> str:
+def _identity_for(dataset_name: str, class_names: Sequence[str], split_hashes: Mapping[str, str]) -> str:
     identity_data = {
-        "name": "voc2007",
+        "name": dataset_name,
         "classes": list(class_names),
         "coordinate_convention": COORDINATE_CONVENTION,
         "split_hashes": dict(split_hashes),
@@ -294,6 +446,22 @@ def _manifest_hash(rows: tuple[ManifestRow, ...]) -> str:
     return hashlib.sha256(output.getvalue().encode()).hexdigest()
 
 
+def _coco_rows_hash(rows: tuple[ManifestRow, ...], data_root: Path) -> str:
+    digest = hashlib.sha256()
+    seen_files: set[str] = set()
+    for row in rows:
+        digest.update(f"{row.image_id},{row.image_path},{row.annotation_path}\n".encode())
+        for relative_path in (row.image_path, row.annotation_path):
+            digest.update(relative_path.encode())
+            if relative_path in seen_files:
+                continue
+            seen_files.add(relative_path)
+            with (data_root / relative_path).open("rb") as handle:
+                while chunk := handle.read(1024 * 1024):
+                    digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _rows_hash(rows: tuple[ManifestRow, ...], voc_root: Path) -> str:
     digest = hashlib.sha256()
     for row in rows:
@@ -327,14 +495,21 @@ def _write_manifests(
         )
         (stage / "source.yaml").write_text(
             yaml.safe_dump(
-                {
-                    "dataset": "Pascal VOC 2007",
-                    "dataset_root": metadata.dataset_root,
-                    "archives": {
-                        "VOCtrainval_06-Nov-2007.tar": "c52e279531787c972589f7e41ab4ae64",
-                        "VOCtest_06-Nov-2007.tar": "b6e924de25625d8de591ea690078ad9f",
-                    },
-                },
+                (
+                    {
+                        "dataset": "Pascal VOC 2007",
+                        "dataset_root": metadata.dataset_root,
+                        "archives": {
+                            "VOCtrainval_06-Nov-2007.tar": "c52e279531787c972589f7e41ab4ae64",
+                            "VOCtest_06-Nov-2007.tar": "b6e924de25625d8de591ea690078ad9f",
+                        },
+                    }
+                    if metadata.annotation_format == "voc"
+                    else {
+                        "dataset": "COCO JSON",
+                        "dataset_root": metadata.dataset_root,
+                    }
+                ),
                 sort_keys=False,
             ),
             encoding="utf-8",

@@ -18,7 +18,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 
 | 字段 | 默认值 | 接受值 | 重要关系 |
 |---|---:|---|---|
-| `data.name` | `voc2007` | 字符串，必须为 `voc2007` | 尚未实现其他提供器。 |
+| `data.name` | `voc2007` | 字符串，必须为 `voc2007` 或 `coco` | 选择已准备的数据提供器；`coco` 使用 COCO JSON 准备命令。 |
 | `data.data_dir` | `data/raw` | 可转换为路径的字符串 | 运行时会追加 `dataset.yaml.dataset_root`；评估使用检查点配置保存的路径。 |
 | `data.manifest_dir` | `data/manifests` | 可转换为路径的字符串 | 必须包含 `train.csv`、`valid.csv`、`test.csv`、`dataset.yaml`；评估与续训时标识必须匹配检查点。 |
 | `data.num_workers` | `0` | >= 0 的整数，拒绝布尔值 | 可在续训时改变；用于训练和评估数据加载器。 |

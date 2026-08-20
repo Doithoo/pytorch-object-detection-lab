@@ -41,7 +41,8 @@ VOC 坐标一基且端点包含。解析后得到零基连续 `xyxy`：`(xmin - 
 | `manifest_hashes` | 各划分精确 CSV 字节的 SHA-256 摘要映射 |
 | `identity` | 组合后的 SHA-256 实验标识 |
 | `coordinate_convention` | 精确字符串 `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
-| `schema_version` | 清单格式版本整数，当前为 `2` |
+| `schema_version` | 清单格式版本整数，当前为 `3` |
+| `annotation_format` | `voc` 或 `coco`，选择标注解析器 |
 
 `split_hashes` 覆盖源内容，`manifest_hashes` 覆盖已发布 CSV 的精确字节。运行时会在构造数据集前校验格式版本、类别顺序与标签映射、划分数量、CSV 摘要和元数据标识。如果清单文件发生变化，请重新生成清单，不要手工编辑。
 

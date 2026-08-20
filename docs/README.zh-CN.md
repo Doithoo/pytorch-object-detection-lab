@@ -38,6 +38,7 @@
 | 指标和输出文件 | [指标参考](reference/metrics.zh-CN.md) |
 | checkpoint 中有什么 | [checkpoint 结构](reference/checkpoint-schema.zh-CN.md) |
 | 使用自己的数据 | [自定义数据指南](guides/using-your-data.zh-CN.md) |
+| 准备 COCO JSON 数据 | [COCO 数据指南](guides/using-coco.zh-CN.md) |
 | 比较两次运行 | [实验指南](guides/experiments.zh-CN.md) |
 
 添加数据集、模型或修改内部行为时，再阅读[添加数据集](guides/adding-datasets.zh-CN.md)、

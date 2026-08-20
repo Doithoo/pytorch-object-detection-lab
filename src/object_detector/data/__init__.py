@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from object_detector.data.inspection import render_detection_preview as render_detection_preview
     from object_detector.data.manifest import DatasetMetadata as DatasetMetadata
     from object_detector.data.manifest import ManifestError as ManifestError
+    from object_detector.data.manifest import prepare_coco as prepare_coco
     from object_detector.data.manifest import prepare_voc2007 as prepare_voc2007
     from object_detector.data.schema import VOC_CLASSES as VOC_CLASSES
     from object_detector.data.schema import VocAnnotation as VocAnnotation
@@ -26,6 +27,7 @@ __all__ = [
     "VocObject",
     "detection_collate",
     "parse_voc_annotation",
+    "prepare_coco",
     "prepare_voc2007",
     "render_detection_preview",
 ]
@@ -40,6 +42,7 @@ _EXPORTS = {
     "VocObject": ("object_detector.data.schema", "VocObject"),
     "detection_collate": ("object_detector.data.dataset", "detection_collate"),
     "parse_voc_annotation": ("object_detector.data.voc", "parse_voc_annotation"),
+    "prepare_coco": ("object_detector.data.manifest", "prepare_coco"),
     "prepare_voc2007": ("object_detector.data.manifest", "prepare_voc2007"),
     "render_detection_preview": ("object_detector.data.inspection", "render_detection_preview"),
 }

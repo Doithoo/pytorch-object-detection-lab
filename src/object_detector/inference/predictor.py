@@ -102,6 +102,7 @@ class Predictor:
         display_limit: int,
         overwrite: bool = False,
     ) -> Prediction:
+        _validate_score_threshold(score_threshold)
         json_path = output_dir / f"{image_path.stem}.json"
         image_output = output_dir / f"{image_path.stem}.png"
         if not overwrite and (json_path.exists() or image_output.exists()):
@@ -130,6 +131,9 @@ class Predictor:
         display_limit: int,
         overwrite: bool = False,
     ) -> BatchPredictionResult:
+        _validate_score_threshold(score_threshold)
+        if not input_dir.is_dir():
+            raise FileNotFoundError(f"prediction input directory does not exist: {input_dir}")
         if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
             raise FileExistsError(f"prediction output directory already exists: {output_dir}")
         paths = sorted(
@@ -140,6 +144,8 @@ class Predictor:
             ),
             key=lambda path: path.relative_to(input_dir).as_posix(),
         )
+        if not paths:
+            raise ValueError(f"prediction input directory contains no supported images: {input_dir}")
         predictions: list[Prediction] = []
         errors: list[PredictionError] = []
         serialized_predictions: list[dict[str, object]] = []
@@ -202,6 +208,11 @@ class Predictor:
             for box, label, score in zip(filtered["boxes"], filtered["labels"], filtered["scores"], strict=True)
         )
         return Prediction(str(image_path), width, height, detections), image, filtered
+
+
+def _validate_score_threshold(value: float) -> None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0.0 <= value <= 1.0:
+        raise ValueError("score_threshold must be a number between 0 and 1")
 
 
 def require_mapping(

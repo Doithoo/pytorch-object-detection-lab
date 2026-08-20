@@ -35,11 +35,15 @@ Rows preserve split-file order. The CSV files reference source data; they do not
 | `class_names` | ordered sequence of the 20 foreground names |
 | `label_by_name` | mapping of each name to integer 1 through 20 |
 | `split_counts` | mapping `train`, `valid`, `test` to row counts |
-| `split_hashes` | mapping each split to a SHA-256 digest |
+| `split_hashes` | mapping each split to a SHA-256 digest of source rows and referenced JPEG/XML bytes |
+| `manifest_hashes` | mapping each split to a SHA-256 digest of the exact CSV bytes |
 | `identity` | combined SHA-256 experiment identity |
 | `coordinate_convention` | exact string `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
+| `schema_version` | integer manifest schema version, currently `2` |
 
-For each row, a split hash consumes `image_id,image_path,annotation_path\n`, each relative path string, then the complete bytes of the referenced image and XML, in row order. The combined identity hashes canonical JSON containing `name`, ordered `classes`, `coordinate_convention`, and `split_hashes`. Thus source bytes, paths/order/membership, classes, or coordinate rules change identity. File timestamps and absolute `data_dir` do not.
+`split_hashes` cover source content and `manifest_hashes` cover the exact published CSV bytes. Runtime loading validates the schema version, VOC class order, label mapping, split counts, CSV hashes, and metadata identity before constructing a dataset. If any manifest file changes, regenerate the manifests instead of editing it by hand.
+
+For each row, a split hash consumes `image_id,image_path,annotation_path\\n`, each relative path string, then the complete bytes of the referenced image and XML, in row order. The combined identity hashes canonical JSON containing `name`, ordered `classes`, `coordinate_convention`, and `split_hashes`. Thus source bytes, paths/order/membership, classes, or coordinate rules change identity. File timestamps and absolute `data_dir` do not.
 
 ## `source.yaml` and `summary.txt`
 

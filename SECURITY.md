@@ -8,7 +8,7 @@ published. Release support will be documented here when the policy changes.
 ## Reporting A Vulnerability
 
 Do not open a public issue for a suspected vulnerability. Use the repository's
-[private security advisory form](https://github.com/Yashowhoo/pytorch-object-detection-lab/security/advisories/new)
+[private security advisory form](https://github.com/Doithoo/pytorch-object-detection-lab/security/advisories/new)
 and include the affected revision, reproduction, impact, and any suggested
 mitigation. Remove private datasets, credentials, and local paths.
 

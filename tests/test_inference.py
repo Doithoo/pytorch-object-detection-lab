@@ -79,6 +79,29 @@ def test_single_prediction_writes_json_and_png_with_overwrite_protection(checkpo
     predictor.predict_single(image, output, score_threshold=0.5, display_limit=10, overwrite=True)
 
 
+def test_directory_prediction_rejects_missing_or_empty_input_directory(checkpoint: Path, tmp_path: Path) -> None:
+    predictor, _ = _build_predictor(checkpoint)
+
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        predictor.predict_directory(
+            tmp_path / "missing", tmp_path / "missing-output", score_threshold=0.5, display_limit=10
+        )
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with pytest.raises(ValueError, match="no supported images"):
+        predictor.predict_directory(empty, tmp_path / "empty-output", score_threshold=0.5, display_limit=10)
+
+
+def test_prediction_api_validates_score_threshold(checkpoint: Path, tmp_path: Path) -> None:
+    predictor, _ = _build_predictor(checkpoint)
+    image = tmp_path / "sample.jpg"
+    Image.new("RGB", (20, 10), "white").save(image)
+
+    with pytest.raises(ValueError, match="score_threshold"):
+        predictor.predict_single(image, tmp_path / "output", score_threshold=1.1, display_limit=10)
+
+
 def test_directory_prediction_is_sorted_and_keeps_valid_results_on_corrupt_input(
     checkpoint: Path, tmp_path: Path
 ) -> None:

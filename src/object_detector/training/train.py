@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 
 from object_detector.config import AppConfig, config_to_dict
 from object_detector.data.dataset import VocDetectionDataset, build_detection_transforms, detection_collate
-from object_detector.data.manifest import DatasetMetadata, load_dataset_metadata
+from object_detector.data.manifest import DatasetMetadata, load_dataset_metadata, verify_prepared_data
 from object_detector.evaluation.metrics import DetectionMetric
 from object_detector.models.registry import build_model
 from object_detector.preflight import resolve_device, validate_training_request
@@ -82,6 +82,7 @@ def run_training(
         raise FileExistsError(f"resume run directory is not the checkpoint directory: {run_dir}")
 
     metadata = load_dataset_metadata(config.data.manifest_dir)
+    verify_prepared_data(config.data.data_dir, metadata, config.data.manifest_dir)
     preflight = validate_training_request(config, metadata)
     preflight.raise_for_issues()
     for notice in preflight.notices:

@@ -1239,59 +1239,6 @@ wheels = [
 ]
 
 [[package]]
-name = "object-detector"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "pillow" },
-    { name = "pycocotools" },
-    { name = "pyyaml" },
-    { name = "torch" },
-    { name = "torchmetrics" },
-    { name = "torchvision" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "build" },
-    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "setuptools" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "twine" },
-    { name = "types-pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "build", marker = "extra == 'dev'", specifier = ">=1.2,<2" },
-    { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.6,<4" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15,<2" },
-    { name = "numpy", specifier = ">=1.24,<3" },
-    { name = "pillow", specifier = ">=9,<12" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3,<5" },
-    { name = "pycocotools", specifier = ">=2.0.7,<3" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7,<9" },
-    { name = "pyyaml", specifier = ">=6,<7" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6,<1" },
-    { name = "setuptools", marker = "extra == 'dev'", specifier = ">=77,<82" },
-    { name = "tomli", marker = "python_full_version < '3.11' and extra == 'dev'", specifier = ">=2,<3" },
-    { name = "torch", specifier = ">=2.0,<3" },
-    { name = "torchmetrics", specifier = ">=1.4,<2" },
-    { name = "torchvision", specifier = ">=0.15,<1" },
-    { name = "twine", marker = "extra == 'dev'", specifier = ">=5,<7" },
-    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6,<7" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1509,6 +1456,59 @@ sdist = { url = "https://files.pythonhosted.org/packages/38/b7/ac44da2cf0e53ada0
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/45/689603d04b3bb8d7faa00f25c24acef993aab7813b3dbbfc472a459ab0b5/python_discovery-1.5.2-py3-none-any.whl", hash = "sha256:3e338c2d0f15dfaeea57493f4c2c6caebe0e998ea815c30ae8bf8ee21f1112d3", size = 38350, upload-time = "2026-08-12T14:05:25.113Z" },
 ]
+
+[[package]]
+name = "pytorch-object-detection-lab"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pillow" },
+    { name = "pycocotools" },
+    { name = "pyyaml" },
+    { name = "torch" },
+    { name = "torchmetrics" },
+    { name = "torchvision" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "build" },
+    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "setuptools" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "twine" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "build", marker = "extra == 'dev'", specifier = ">=1.2,<2" },
+    { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.6,<4" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15,<2" },
+    { name = "numpy", specifier = ">=1.24,<3" },
+    { name = "pillow", specifier = ">=9,<12" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3,<5" },
+    { name = "pycocotools", specifier = ">=2.0.7,<3" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7,<9" },
+    { name = "pyyaml", specifier = ">=6,<7" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6,<1" },
+    { name = "setuptools", marker = "extra == 'dev'", specifier = ">=77,<82" },
+    { name = "tomli", marker = "python_full_version < '3.11' and extra == 'dev'", specifier = ">=2,<3" },
+    { name = "torch", specifier = ">=2.0,<3" },
+    { name = "torchmetrics", specifier = ">=1.4,<2" },
+    { name = "torchvision", specifier = ">=0.15,<1" },
+    { name = "twine", marker = "extra == 'dev'", specifier = ">=5,<7" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6,<7" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "pywin32-ctypes"

@@ -50,5 +50,10 @@ split_hashes:
   train: 0db09d4d95248aebbd6e17f1ee202d13506cc081fe554d913344c7350cc22584
   valid: 62630ac366ecad7f6dd2f51b9de501f66fd7e8d57d2bc000fdbd6f7db065540a
   test: f21265f3e1a75a4c65e6e19f4c02b98e5d0b7b0c573dd36f755ca5623117c0e5
+manifest_hashes:
+  train: 70c8d879f0b5e0d7888b142bab62bff654e31d1d9d3cd325e03405fb0ad5090b
+  valid: 49f44f5fdbaf3eaee3610343204c6b3eb6b122bf21557da5dff0df026fe23e5b
+  test: 76c5aafd4e91990606b9823e937cbd329bcd27d5d72c0215b52bc3dc3d3014a7
 identity: b9bdc2604322c07f26c9a0135a063c7702b0dfb261171401076cf6733cfdb5b7
 coordinate_convention: zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries
+schema_version: 2

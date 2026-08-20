@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_data.add_argument("--allow-nonstandard-counts", action="store_true")
     prepare_data.set_defaults(handler=_prepare_data)
 
+    verify_data = subparsers.add_parser("verify-data", help="verify prepared manifests and source bytes")
+    verify_data.add_argument("--data-dir", type=Path, default=Path("data/raw"))
+    verify_data.add_argument("--manifest-dir", type=Path, default=Path("data/manifests"))
+    verify_data.set_defaults(handler=_verify_data)
+
     train = subparsers.add_parser("train", help="train an object detector")
     train.add_argument("--config", type=Path)
     train.add_argument("--set", dest="overrides", action="append", nargs=2, default=[], metavar=("KEY", "VALUE"))
@@ -160,6 +165,15 @@ def _prepare_data(args: argparse.Namespace) -> int:
     counts = metadata.split_counts
     print(f"identity={metadata.identity}")
     print(f"train={counts['train']} valid={counts['valid']} test={counts['test']}")
+    return 0
+
+
+def _verify_data(args: argparse.Namespace) -> int:
+    from object_detector.data.manifest import load_dataset_metadata, verify_prepared_data
+
+    metadata = load_dataset_metadata(args.manifest_dir)
+    verify_prepared_data(args.data_dir, metadata, args.manifest_dir)
+    print(f"verified identity={metadata.identity}")
     return 0
 
 

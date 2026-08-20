@@ -1,4 +1,4 @@
-.PHONY: lint format-check typecheck test build
+.PHONY: lint format-check typecheck test build metadata check
 
 lint:
 	uv run ruff check .
@@ -14,3 +14,8 @@ test:
 
 build:
 	uv run python -m build
+
+metadata:
+	uv run twine check dist/*
+
+check: lint format-check typecheck test build metadata

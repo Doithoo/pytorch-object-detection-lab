@@ -109,6 +109,7 @@ uv sync --locked --extra dev
 uv run detect --version
 uv run detect list-models
 uv run detect show-config --config configs/reference_fasterrcnn.yaml
+uv run detect verify-data --data-dir data/raw --manifest-dir data/manifests
 ```
 
 这些命令不会开始完整训练。准备好本地 VOC 数据后，还可以用 CPU 完成一次小批次更新：

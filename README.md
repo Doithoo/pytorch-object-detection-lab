@@ -124,6 +124,7 @@ uv sync --locked --extra dev
 uv run detect --version
 uv run detect list-models
 uv run detect show-config --config configs/reference_fasterrcnn.yaml
+uv run detect verify-data --data-dir data/raw --manifest-dir data/manifests
 ```
 
 These commands do not start full training. After preparing VOC locally, you

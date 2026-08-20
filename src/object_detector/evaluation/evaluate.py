@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 
 from object_detector.config import AppConfig, ConfigError, config_from_dict
 from object_detector.data.dataset import VocDetectionDataset, detection_collate
-from object_detector.data.manifest import load_dataset_metadata
+from object_detector.data.manifest import load_dataset_metadata, verify_prepared_data
 from object_detector.evaluation.errors import DetectionError, analyze_image_errors
 from object_detector.evaluation.metrics import DetectionMetric, metric_backend_versions
 from object_detector.evaluation.visualization import render_detection_evidence
@@ -62,6 +62,7 @@ def evaluate_checkpoint(
     validate_preprocessing_contract(checkpoint)
     config = _checkpoint_config(checkpoint)
     metadata = load_dataset_metadata(config.data.manifest_dir)
+    verify_prepared_data(config.data.data_dir, metadata, config.data.manifest_dir)
     if checkpoint.get("manifest_identity") != metadata.identity:
         raise CheckpointCompatibilityError("checkpoint manifest_identity does not match prepared dataset")
 

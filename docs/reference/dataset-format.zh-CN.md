@@ -35,11 +35,15 @@ VOC 坐标一基且端点包含。解析后得到零基连续 `xyxy`：`(xmin - 
 | `class_names` | 20 个前景类别的有序序列 |
 | `label_by_name` | 每个名称到整数 1 至 20 的映射 |
 | `split_counts` | `train`、`valid`、`test` 到行数的映射 |
-| `split_hashes` | 各划分到 SHA-256 摘要的映射 |
+| `split_hashes` | 各划分源行和引用的 JPEG/XML 字节的 SHA-256 摘要映射 |
+| `manifest_hashes` | 各划分精确 CSV 字节的 SHA-256 摘要映射 |
 | `identity` | 组合后的 SHA-256 实验标识 |
 | `coordinate_convention` | 精确字符串 `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
+| `schema_version` | 清单格式版本整数，当前为 `2` |
 
-每行的划分哈希依次加入 `image_id,image_path,annotation_path\n`、两个相对路径字符串，以及对应图像和 XML 的完整字节。组合标识对包含 `name`、有序 `classes`、`coordinate_convention` 与 `split_hashes` 的规范 JSON 求哈希。因此源字节、路径、顺序、成员、类别或坐标规则变化都会改变标识；文件时间戳和绝对 `data_dir` 不参与。
+`split_hashes` 覆盖源内容，`manifest_hashes` 覆盖已发布 CSV 的精确字节。运行时会在构造数据集前校验格式版本、VOC 类别顺序、标签映射、划分数量、CSV 摘要和元数据标识。如果清单文件发生变化，请重新生成清单，不要手工编辑。
+
+每行的划分哈希依次加入 `image_id,image_path,annotation_path\\n`、两个相对路径字符串，以及对应图像和 XML 的完整字节。组合标识对包含 `name`、有序 `classes`、`coordinate_convention` 与 `split_hashes` 的规范 JSON 求哈希。因此源字节、路径、顺序、成员、类别或坐标规则变化都会改变标识；文件时间戳和绝对 `data_dir` 不参与。
 
 ## `source.yaml` 与 `summary.txt`
 

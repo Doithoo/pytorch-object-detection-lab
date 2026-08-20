@@ -193,6 +193,21 @@ def test_prepare_data_prints_identity_and_counts(tmp_path: Path, capsys) -> None
     assert "identity=" in output
 
 
+def test_verify_data_prints_identity(prepared_voc, capsys) -> None:
+    result = main(
+        [
+            "verify-data",
+            "--data-dir",
+            str(prepared_voc.voc_root.parent.parent),
+            "--manifest-dir",
+            str(prepared_voc.manifests),
+        ]
+    )
+
+    assert result == 0
+    assert f"verified identity={prepared_voc.metadata.identity}" in capsys.readouterr().out
+
+
 def test_list_models_prints_stable_registry_metadata(capsys) -> None:
     result = main(["list-models"])
 
@@ -463,6 +478,7 @@ def test_predict_handler_runs_single_mode(tmp_path: Path, capsys, monkeypatch) -
         "inspect-data",
         "compare-runs",
         "prepare-data",
+        "verify-data",
         "train",
         "evaluate",
         "predict",

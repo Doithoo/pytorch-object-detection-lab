@@ -15,7 +15,7 @@
 **Files:**
 - Reference: `docs/superpowers/specs/2026-08-19-github-about-design.md`
 
-- [ ] **Step 1: Read the current About metadata**
+- [x] **Step 1: Read the current About metadata**
 
 Run:
 
@@ -26,7 +26,7 @@ gh repo view Doithoo/pytorch-object-detection-lab \
 
 Expected: the repository exists, the website is empty, and no topics are set.
 
-- [ ] **Step 2: Apply the approved description, website, and topics**
+- [x] **Step 2: Apply the approved description, website, and topics**
 
 Run:
 
@@ -50,7 +50,7 @@ gh repo edit Doithoo/pytorch-object-detection-lab \
 
 Expected: command exits successfully without changing repository content.
 
-- [ ] **Step 3: Read back and compare the metadata**
+- [x] **Step 3: Read back and compare the metadata**
 
 Run:
 
@@ -62,7 +62,7 @@ gh repo view Doithoo/pytorch-object-detection-lab \
 Expected: the description matches exactly, the website is empty, and all 12
 approved topics are present.
 
-- [ ] **Step 4: Push the local design and plan commits**
+- [x] **Step 4: Push the local design and plan commits**
 
 Run:
 

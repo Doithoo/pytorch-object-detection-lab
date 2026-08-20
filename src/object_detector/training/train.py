@@ -218,7 +218,7 @@ def run_training(
         history.append(row)
         if scheduler is not None:
             scheduler.step()
-        current = float(cast(int | float, validation_metrics["map_50_95"]))
+        current = float(cast(int | float, validation_metrics[config.train.best_metric]))
         improved = current > best_metric
         if improved:
             best_metric = current

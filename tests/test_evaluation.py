@@ -97,7 +97,7 @@ def test_empty_evaluation_writes_complete_artifact_set(prepared_voc: PreparedVoc
     assert set(payload["backend_versions"]) == {"torchmetrics", "pycocotools"}
     assert json.loads((output / "predictions.json").read_text(encoding="utf-8"))[0]["predictions"] == []
     with (output / "per_class.csv").open(newline="", encoding="utf-8") as handle:
-        assert next(csv.reader(handle)) == ["class_id", "class_name", "map_50_95", "mar_100"]
+        assert next(csv.reader(handle)) == ["class_id", "class_name", "map_50_95", "mar_100", "voc_ap_50_11"]
     with (output / "errors.csv").open(newline="", encoding="utf-8") as handle:
         assert next(csv.reader(handle)) == ["image_id", "kind", "class_name", "score", "iou", "box"]
     assert (output / "visualizations" / "summary.png").is_file()

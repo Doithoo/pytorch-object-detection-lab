@@ -51,7 +51,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 | `train.seed` | `42` | 闭区间 `0` 到 `4294967295` 内的整数，拒绝布尔值 | 初始化 Python、NumPy、torch 和打乱生成器；越界时报告 `train.seed must be between 0 and 4294967295`；随机状态写入检查点。 |
 | `train.amp` | `false` | 只能是 YAML 布尔值 | 梯度缩放只在 CUDA 启用，自动类型转换只用于 CPU/CUDA，因此解析为 MPS 时使用全精度。只有配置的 `device` 准确为 `mps` 时预检查才提示；`auto` 解析为 MPS 时不会提示。 |
 | `train.grad_clip` | `0.0` | >= 0 的有限数值 | `0` 关闭裁剪；正值在反向传播后执行全局范数裁剪。 |
-| `train.best_metric` | `map_50_95` | 必须为 `map_50_95` | 只有验证指标严格提高时才更新 `best.pt`。 |
+| `train.best_metric` | `map_50_95` | `map_50_95` 或 `voc_map_50_11` | `best.pt` 只在选定验证指标严格提高时更新。 |
 
 ## 评估和顶层字段
 

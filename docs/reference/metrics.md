@@ -13,7 +13,7 @@ Rows are rewritten atomically after each completed epoch. Columns appear in firs
 | `epoch` | one-based completed epoch |
 | `loss_total` | sample-weighted epoch mean of the sum of model-returned losses |
 | model loss names | sample-weighted epoch means for every key returned in train mode |
-| `valid_map_50_95`, `valid_map_50`, `valid_map_75` | validation AP fields below |
+| `valid_map_50_95`, `valid_map_50`, `valid_map_75`, `valid_voc_map_50_11` | validation AP fields below |
 | `valid_mar_1`, `valid_mar_10`, `valid_mar_100` | validation AR fields below |
 | `valid_image_count` | validation images processed |
 | `valid_target_count` | ordinary validation targets, excluding `iscrowd=1` difficult objects |
@@ -30,10 +30,11 @@ The backend is `torchmetrics.detection.MeanAveragePrecision(box_format="xyxy", i
 | `map_50_95` | mean AP over IoU 0.50, 0.55, ..., 0.95 |
 | `map_50` | AP at IoU 0.50 |
 | `map_75` | AP at IoU 0.75 |
+| `voc_map_50_11` | mean VOC 2007 11-point AP at IoU 0.50 across foreground classes |
 | `mar_1` | mean AR with at most 1 detection per image |
 | `mar_10` | mean AR with at most 10 detections per image |
 | `mar_100` | mean AR with at most 100 detections per image |
-| `per_class` | represented non-background classes with `class_id`, `class_name`, `map_50_95`, `mar_100` |
+| `per_class` | represented non-background classes with `class_id`, `class_name`, `map_50_95`, `mar_100`, `voc_ap_50_11` |
 | `image_count` | images supplied to the backend |
 | `target_count` | ordinary, non-crowd targets |
 | `prediction_count` | detections supplied to the backend |
@@ -62,7 +63,7 @@ Changing CLI `--score-threshold` changes `predictions.json` and rendered blue bo
 
 ## CSV and JSON outputs
 
-`per_class.csv` columns are exactly `class_id,class_name,map_50_95,mar_100`. `predictions.json` is an array of `{image_id, predictions}`; each retained prediction has `box` (four rounded `xyxy` values), `class_id`, `class_name`, and `score`.
+`per_class.csv` columns are exactly `class_id,class_name,map_50_95,mar_100,voc_ap_50_11`. `predictions.json` is an array of `{image_id, predictions}`; each retained prediction has `box` (four rounded `xyxy` values), `class_id`, `class_name`, and `score`.
 
 `errors.csv` columns are exactly `image_id,kind,class_name,score,iou,box`. `box` is a JSON array inside the CSV cell. A missed row has an empty score. Error candidates are predictions with score at least `error_score_threshold`, ordered by descending score with original order breaking ties, and greedily matched to unmatched ordinary targets of the same class.
 

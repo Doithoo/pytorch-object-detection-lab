@@ -225,8 +225,8 @@ def _validate_config(config: AppConfig) -> None:
     _require_type("train.amp", config.train.amp, bool)
     _require_choice("train.optimizer", config.train.optimizer, {"adamw", "sgd"})
     _require_choice("train.scheduler", config.train.scheduler, {"none", "step"})
-    if config.train.best_metric != "map_50_95":
-        raise ConfigError("train.best_metric currently supports only 'map_50_95'")
+    if config.train.best_metric not in {"map_50_95", "voc_map_50_11"}:
+        raise ConfigError("train.best_metric currently supports only 'map_50_95' or 'voc_map_50_11'")
 
     _require_probability("evaluation.score_threshold", config.evaluation.score_threshold)
     _require_probability("evaluation.error_score_threshold", config.evaluation.error_score_threshold)

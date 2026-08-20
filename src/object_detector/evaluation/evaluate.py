@@ -276,7 +276,7 @@ def _serializable_predictions(
 
 
 def _write_per_class_csv(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
-    fieldnames = ["class_id", "class_name", "map_50_95", "mar_100"]
+    fieldnames = ["class_id", "class_name", "map_50_95", "mar_100", "voc_ap_50_11"]
     _write_csv_atomic(path, fieldnames, [{key: _rounded(row[key]) for key in fieldnames} for row in rows])
 
 

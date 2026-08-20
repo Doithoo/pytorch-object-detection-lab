@@ -39,6 +39,8 @@ def test_unknown_field_is_rejected(tmp_path: Path) -> None:
 
 
 def test_unsupported_metric_controls_are_rejected(tmp_path: Path) -> None:
+    assert load_config(overrides=[("train.best_metric", "voc_map_50_11")]).train.best_metric == "voc_map_50_11"
+
     best_metric = tmp_path / "best.yaml"
     best_metric.write_text("train:\n  best_metric: map_50\n", encoding="utf-8")
     max_detections = tmp_path / "max.yaml"

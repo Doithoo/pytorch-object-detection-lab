@@ -13,7 +13,7 @@
 | `epoch` | 从 1 开始的已完成轮次 |
 | `loss_total` | 模型返回损失之和按样本加权的轮次均值 |
 | 模型损失名称 | 训练模式返回的每个键按样本加权的轮次均值 |
-| `valid_map_50_95`、`valid_map_50`、`valid_map_75` | 下文定义的验证 AP |
+| `valid_map_50_95`、`valid_map_50`、`valid_map_75`、`valid_voc_map_50_11` | 下文定义的验证 AP |
 | `valid_mar_1`、`valid_mar_10`、`valid_mar_100` | 下文定义的验证 AR |
 | `valid_image_count` | 处理的验证图像数 |
 | `valid_target_count` | 普通验证目标数，不含 `iscrowd=1` 的困难目标 |
@@ -30,10 +30,11 @@ Faster R-CNN 固定返回 `loss_classifier`、`loss_box_reg`、`loss_objectness`
 | `map_50_95` | IoU 0.50、0.55、...、0.95 上的平均 AP |
 | `map_50` | IoU 0.50 时的 AP |
 | `map_75` | IoU 0.75 时的 AP |
+| `voc_map_50_11` | 所有前景类别在 IoU 0.50 下的 VOC 2007 十一点 AP 平均值 |
 | `mar_1` | 每图最多 1 个检测时的平均 AR |
 | `mar_10` | 每图最多 10 个检测时的平均 AR |
 | `mar_100` | 每图最多 100 个检测时的平均 AR |
-| `per_class` | 后端中出现的非背景类别，含 `class_id`、`class_name`、`map_50_95`、`mar_100` |
+| `per_class` | 后端中出现的非背景类别，含 `class_id`、`class_name`、`map_50_95`、`mar_100`、`voc_ap_50_11` |
 | `image_count` | 交给后端的图像数 |
 | `target_count` | 普通非拥挤目标数 |
 | `prediction_count` | 交给后端的检测数 |
@@ -62,7 +63,7 @@ VOC 困难目标以 `iscrowd=1` 进入评估，不增加普通 `target_count`。
 
 ## CSV 与 JSON 输出
 
-`per_class.csv` 的列依次为 `class_id,class_name,map_50_95,mar_100`。`predictions.json` 是 `{image_id, predictions}` 数组；每条保留预测包含 `box`（四个舍入后的 `xyxy` 值）、`class_id`、`class_name` 和 `score`。
+`per_class.csv` 的列依次为 `class_id,class_name,map_50_95,mar_100,voc_ap_50_11`。`predictions.json` 是 `{image_id, predictions}` 数组；每条保留预测包含 `box`（四个舍入后的 `xyxy` 值）、`class_id`、`class_name` 和 `score`。
 
 `errors.csv` 的列依次为 `image_id,kind,class_name,score,iou,box`。`box` 在 CSV 单元格内是 JSON 数组；漏检行的分数为空。错误候选为分数不低于 `error_score_threshold` 的预测，按分数降序排列，同分时保留原顺序，再与尚未匹配的同类别普通目标贪心匹配。
 

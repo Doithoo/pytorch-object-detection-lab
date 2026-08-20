@@ -8,6 +8,7 @@ EXPECTED_KEYS = {
     "map_50_95",
     "map_50",
     "map_75",
+    "voc_map_50_11",
     "mar_1",
     "mar_10",
     "mar_100",
@@ -59,14 +60,36 @@ def test_perfect_prediction_returns_map() -> None:
     assert set(result) == EXPECTED_KEYS
     assert result["map_50_95"] == pytest.approx(1.0)
     assert result["map_50"] == pytest.approx(1.0)
-    assert result["map_75"] == pytest.approx(1.0)
+    assert result["voc_map_50_11"] == pytest.approx(1.0)
     assert result["mar_100"] == pytest.approx(1.0)
     assert result["per_class"] == (
-        {"class_id": 1, "class_name": "dog", "map_50_95": pytest.approx(1.0), "mar_100": pytest.approx(1.0)},
+        {
+            "class_id": 1,
+            "class_name": "dog",
+            "map_50_95": pytest.approx(1.0),
+            "mar_100": pytest.approx(1.0),
+            "voc_ap_50_11": pytest.approx(1.0),
+        },
     )
     assert result["image_count"] == 2
     assert result["target_count"] == 2
     assert result["prediction_count"] == 2
+
+
+def test_voc_2007_ap_uses_eleven_recall_points_and_ignores_difficult_targets() -> None:
+    metric = DetectionMetric(("background", "dog"))
+    target = _target()
+    prediction = {
+        "boxes": torch.tensor([[12.0, 12.0, 18.0, 18.0], [1.0, 1.0, 9.0, 9.0]]),
+        "labels": torch.tensor([1, 1]),
+        "scores": torch.tensor([0.9, 0.8]),
+    }
+
+    metric.update([prediction], [target])
+    result = metric.compute()
+
+    assert result["voc_map_50_11"] == pytest.approx(0.5)
+    assert result["per_class"][0]["voc_ap_50_11"] == pytest.approx(0.5)
 
 
 def test_empty_predictions_return_numeric_zeros() -> None:
@@ -77,7 +100,7 @@ def test_empty_predictions_return_numeric_zeros() -> None:
     result = metric.compute()
 
     assert set(result) == EXPECTED_KEYS
-    for key in ("map_50_95", "map_50", "map_75", "mar_1", "mar_10", "mar_100"):
+    for key in ("map_50_95", "map_50", "map_75", "voc_map_50_11", "mar_1", "mar_10", "mar_100"):
         assert result[key] == 0.0
     assert result["image_count"] == 2
     assert result["target_count"] == 2

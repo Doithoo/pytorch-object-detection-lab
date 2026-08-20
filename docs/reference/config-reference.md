@@ -51,7 +51,7 @@ uv run detect show-config --config configs/learning_minimal.yaml --set train.epo
 | `train.seed` | `42` | integer from `0` through `4294967295` inclusive, Boolean rejected | Seeds Python, NumPy, torch, and the shuffle generator; out-of-range values fail with `train.seed must be between 0 and 4294967295`; RNG state is checkpointed. |
 | `train.amp` | `false` | YAML Boolean only | Gradient scaling only on CUDA and autocast only on CPU/CUDA, so a resolved MPS device uses full precision. Preflight emits the MPS notice only when configured `device` is exactly `mps`; `auto` resolving to MPS is silent. |
 | `train.grad_clip` | `0.0` | finite number >= 0 | `0` disables clipping; positive values call global norm clipping after backward. |
-| `train.best_metric` | `map_50_95` | exactly `map_50_95` | `best.pt` updates only on a strict validation improvement. |
+| `train.best_metric` | `map_50_95` | `map_50_95` or `voc_map_50_11` | `best.pt` updates only on a strict improvement of the selected validation metric. |
 
 ## Evaluation and top-level fields
 

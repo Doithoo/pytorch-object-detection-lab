@@ -131,6 +131,7 @@ uv run detect train --config configs/learning_minimal.yaml --dry-run --device cp
 - 如何用验证集选择 `best.pt`，再用测试集报告最终结果。
 - 如何查看逐类别 AP、误检、漏检和预测图，而不只看一个总分。
 - 如何从 checkpoint 继续训练，或对自己的图片运行预测。
+- 如何把同一份已校验划分和标签导出给独立的 YOLO 兼容引擎。
 
 项目提供五个注册模型配置和显式外部工厂：
 

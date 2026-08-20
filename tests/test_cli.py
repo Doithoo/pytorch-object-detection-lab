@@ -481,6 +481,7 @@ def test_predict_handler_runs_single_mode(tmp_path: Path, capsys, monkeypatch) -
         "compare-runs",
         "prepare-data",
         "verify-data",
+        "export-yolo-data",
         "train",
         "evaluate",
         "predict",

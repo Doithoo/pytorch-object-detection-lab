@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from object_detector.data.schema import VocObject as VocObject
     from object_detector.data.voc import VocFormatError as VocFormatError
     from object_detector.data.voc import parse_voc_annotation as parse_voc_annotation
+    from object_detector.data.yolo import export_yolo_dataset as export_yolo_dataset
 
 __all__ = [
     "VOC_CLASSES",
@@ -26,6 +27,7 @@ __all__ = [
     "VocFormatError",
     "VocObject",
     "detection_collate",
+    "export_yolo_dataset",
     "parse_voc_annotation",
     "prepare_coco",
     "prepare_voc2007",
@@ -41,6 +43,7 @@ _EXPORTS = {
     "VocFormatError": ("object_detector.data.voc", "VocFormatError"),
     "VocObject": ("object_detector.data.schema", "VocObject"),
     "detection_collate": ("object_detector.data.dataset", "detection_collate"),
+    "export_yolo_dataset": ("object_detector.data.yolo", "export_yolo_dataset"),
     "parse_voc_annotation": ("object_detector.data.voc", "parse_voc_annotation"),
     "prepare_coco": ("object_detector.data.manifest", "prepare_coco"),
     "prepare_voc2007": ("object_detector.data.manifest", "prepare_voc2007"),

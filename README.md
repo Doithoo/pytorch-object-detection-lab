@@ -150,6 +150,7 @@ The command and considerations are in the
 - How to inspect per-class AP, false positives, misses, and prediction images
   instead of relying on one score.
 - How to resume from a checkpoint or run predictions on your own images.
+- How to export the same validated splits and labels for a separate YOLO-compatible engine.
 
 The project includes five registered model configurations plus explicit external factories:
 

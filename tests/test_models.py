@@ -115,6 +115,7 @@ def test_package_public_exports_remain_available() -> None:
             "VocFormatError",
             "VocObject",
             "detection_collate",
+            "export_yolo_dataset",
             "parse_voc_annotation",
             "prepare_coco",
             "prepare_voc2007",

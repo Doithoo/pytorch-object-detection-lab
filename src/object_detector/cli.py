@@ -58,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     verify_data.add_argument("--manifest-dir", type=Path, default=Path("data/manifests"))
     verify_data.set_defaults(handler=_verify_data)
 
+    export_yolo = subparsers.add_parser("export-yolo-data", help="export prepared data in YOLO text format")
+    export_yolo.add_argument("--data-dir", type=Path, default=Path("data/raw"))
+    export_yolo.add_argument("--manifest-dir", type=Path, default=Path("data/manifests"))
+    export_yolo.add_argument("--output-dir", type=Path, required=True)
+    export_yolo.add_argument("--overwrite", action="store_true")
+    export_yolo.set_defaults(handler=_export_yolo_data)
+
     train = subparsers.add_parser("train", help="train an object detector")
     train.add_argument("--config", type=Path)
     train.add_argument("--set", dest="overrides", action="append", nargs=2, default=[], metavar=("KEY", "VALUE"))
@@ -200,6 +207,19 @@ def _verify_data(args: argparse.Namespace) -> int:
     metadata = load_dataset_metadata(args.manifest_dir)
     verify_prepared_data(args.data_dir, metadata, args.manifest_dir)
     print(f"verified identity={metadata.identity}")
+    return 0
+
+
+def _export_yolo_data(args: argparse.Namespace) -> int:
+    from object_detector.data.yolo import export_yolo_dataset
+
+    result = export_yolo_dataset(
+        args.manifest_dir,
+        args.data_dir,
+        args.output_dir,
+        overwrite=args.overwrite,
+    )
+    print(f"images={result.image_count} objects={result.object_count} output={result.output_dir}")
     return 0
 
 

@@ -2,7 +2,7 @@
 
 [English](05-evaluation-and-inference.md) | [教程索引](README.zh-CN.md)
 
-你可以直接使用仓库保存的 Kaggle v7 结果学习这一章，不需要先下载 145 MB checkpoint。
+你可以直接使用仓库保存的 Kaggle 结果学习这一章，不需要先下载 145 MB checkpoint。
 从 [`../recorded-run/evaluation`](../recorded-run/evaluation) 目录开始。
 
 ## 先看汇总结果
@@ -10,7 +10,7 @@
 [`evaluation.json`](../recorded-run/evaluation/evaluation.json) 记录了全部 4,952 张 VOC 2007
 测试图像的评估：
 
-| 指标 | Kaggle v7 结果 |
+| 指标 | 已完成的 Kaggle 结果 |
 |---|---:|
 | `map_50_95` | **0.322312** |
 | `map_50` | **0.609917** |

@@ -50,7 +50,7 @@ Open [`../recorded-run/kaggle/kernel-metadata.json`](../recorded-run/kaggle/kern
 
 ```json
 {
-  "id": "your-username/pytorch-object-detection-lab-voc2007-gpu-run-v7",
+  "id": "your-username/pytorch-object-detection-lab-voc2007-gpu",
   "enable_gpu": "true",
   "enable_internet": "true",
   "machine_shape": "NvidiaTeslaT4"
@@ -71,7 +71,7 @@ kaggle kernels push -p docs/recorded-run/kaggle
 The command returns the Kaggle page URL. You can also query the status:
 
 ```bash
-kaggle kernels status <your-username>/pytorch-object-detection-lab-voc2007-gpu-run-v7
+kaggle kernels status <your-username>/pytorch-object-detection-lab-voc2007-gpu
 ```
 
 After the first submission, open Settings on the Kaggle page and confirm:
@@ -112,8 +112,8 @@ the final log summary:
 - `best_epoch` is present.
 - test evaluation used all 4,952 images.
 
-The published v7 page reported `3223.9s` total. Your time can vary with Kaggle
-hardware and network conditions.
+The completed reference run reported `3223.9s` total. Your time can vary with
+Kaggle hardware and network conditions.
 
 ## 6. Download the training artifacts
 
@@ -121,7 +121,7 @@ The complete output also contains about 1.7 GB of temporary VOC data. Usually
 you only need `artifacts`:
 
 ```bash
-kaggle kernels output <your-username>/pytorch-object-detection-lab-voc2007-gpu-run-v7 --file-pattern 'artifacts/.*' -p kaggle-output
+kaggle kernels output <your-username>/pytorch-object-detection-lab-voc2007-gpu --file-pattern 'artifacts/.*' -p kaggle-output
 ```
 
 Start with:
@@ -148,13 +148,13 @@ the non-interactive job:
 FileNotFoundError: expected one project archive, found []
 ```
 
-The current v7 runner embeds its exact source and needs no manual archive
+The current runner embeds its exact source and needs no manual archive
 upload. Confirm that metadata points to the current repository
 `run_kaggle.py`, not an older copy.
 
 ### A new Dataset cannot be attached non-interactively
 
-Another version called `kagglehub.dataset_download` while running and Kaggle
+An earlier runner called `kagglehub.dataset_download` while running and Kaggle
 returned:
 
 ```text

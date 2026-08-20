@@ -55,7 +55,6 @@ AP/AR 由 torchmetrics 1.9.0 和 pycocotools 2.0.11 计算。这里的 `map_50_9
 
 ## 这次运行怎样完成
 
-- Kaggle kernel：`yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7`
 - 页面：<https://www.kaggle.com/code/yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7>
 - 设备：`cuda:0`，Tesla T4。Kaggle 分配了两张，本项目使用一张。
 - 数据：官方 VOC 2007，train / valid / test 为 2,501 / 2,510 / 4,952。
@@ -63,6 +62,9 @@ AP/AR 由 torchmetrics 1.9.0 和 pycocotools 2.0.11 计算。这里的 `map_50_9
 - 训练：26 轮，CUDA AMP，两个 data workers。
 - 选模：每轮在 valid 上计算 `map_50_95`，保存最好轮次。
 - 测试：全部训练结束后，用 `best.pt` 评估一次 test。
+
+页面地址末尾的编号只是原始 Kaggle 提交地址的一部分，不代表模型、教程或项目版本，自己
+运行时不需要沿用。
 
 实际提交文件是 [`kaggle/run_kaggle.py`](kaggle/run_kaggle.py) 和
 [`kaggle/kernel-metadata.json`](kaggle/kernel-metadata.json)。runner 内嵌源码，不需要

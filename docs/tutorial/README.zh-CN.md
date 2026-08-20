@@ -24,8 +24,8 @@
 - 想尽快看到结果：先按 [Kaggle 指南](../guides/kaggle.zh-CN.md)提交任务，再读教程。
 - 想先理解模型：先读 00、02、03 章，再提交训练。
 
-项目唯一发布的完整训练结果来自 Kaggle v7。教程中的合成张量、随机权重模型和 CPU
-dry run 都是用来观察某一步，不是模型成绩。
+项目唯一发布的完整训练结果来自已完成的 Kaggle 训练。教程中的合成张量、随机权重模型和
+CPU dry run 都是用来观察某一步，不是模型成绩。
 
 训练完成后，把自己的 `metrics.csv`、`evaluation.json` 和预测图与
 [已保存的 Kaggle 运行](../recorded-run/README.zh-CN.md)逐项对照即可。

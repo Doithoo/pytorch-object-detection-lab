@@ -22,8 +22,8 @@ model, or start training.
 | `ssdlite320_mobilenet_v3.yaml` | Try the one-stage SSDLite model | `none`; no weight download by default |
 
 The complete training result published by the project comes only from the
-Kaggle v7 run of `reference_fasterrcnn.yaml`. No full VOC result is published
-for the other configurations.
+completed Kaggle run of `reference_fasterrcnn.yaml`. No full VOC result is
+published for the other configurations.
 
 ## Recommended choice
 

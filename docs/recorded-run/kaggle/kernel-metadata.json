@@ -1,6 +1,6 @@
 {
-  "id": "yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7",
-  "title": "PyTorch Object Detection Lab VOC2007 GPU Run V7",
+  "id": "yashowhoo/pytorch-object-detection-lab-voc2007-gpu",
+  "title": "PyTorch Object Detection Lab VOC2007 GPU",
   "code_file": "run_kaggle.py",
   "language": "python",
   "kernel_type": "script",

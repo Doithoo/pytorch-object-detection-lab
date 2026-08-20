@@ -31,7 +31,7 @@ all 4,952 test images.
 
 ![Prediction from the Kaggle-trained model on a VOC 2007 test image](docs/recorded-run/evaluation/visualizations/summary.png)
 
-This is a real prediction saved by the Kaggle v7 run, not a teaching diagram.
+This is a real prediction saved by the completed Kaggle run, not a teaching diagram.
 See the [Kaggle run record](docs/recorded-run/README.md) for full metrics,
 per-class results, false positives, and missed objects. It is the only complete
 training result published by this repository; small runs and synthetic
@@ -70,7 +70,7 @@ the `id` with your Kaggle username. Keep `enable_gpu: true` and
 
 ```bash
 kaggle kernels push -p docs/recorded-run/kaggle
-kaggle kernels status <your-username>/pytorch-object-detection-lab-voc2007-gpu-run-v7
+kaggle kernels status <your-username>/pytorch-object-detection-lab-voc2007-gpu
 ```
 
 Open the job on Kaggle and confirm it received a T4 or newer GPU. The page may
@@ -84,7 +84,7 @@ After the status becomes `COMPLETE`, download only the training artifacts so
 you do not also download the temporary VOC directory:
 
 ```bash
-kaggle kernels output <your-username>/pytorch-object-detection-lab-voc2007-gpu-run-v7 --file-pattern 'artifacts/.*' -p kaggle-output
+kaggle kernels output <your-username>/pytorch-object-detection-lab-voc2007-gpu --file-pattern 'artifacts/.*' -p kaggle-output
 ```
 
 Start with these files under `kaggle-output`:

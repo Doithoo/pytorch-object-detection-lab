@@ -2,7 +2,7 @@
 
 [简体中文](05-evaluation-and-inference.zh-CN.md) | [Tutorial index](README.md)
 
-You can learn this chapter from the saved Kaggle v7 result without first
+You can learn this chapter from the saved Kaggle result without first
 downloading the 145 MB checkpoint. Start in
 [`../recorded-run/evaluation`](../recorded-run/evaluation).
 
@@ -11,7 +11,7 @@ downloading the 145 MB checkpoint. Start in
 [`evaluation.json`](../recorded-run/evaluation/evaluation.json) records the
 evaluation of all 4,952 VOC 2007 test images:
 
-| Metric | Kaggle v7 result |
+| Metric | Completed Kaggle result |
 |---|---:|
 | `map_50_95` | **0.322312** |
 | `map_50` | **0.609917** |

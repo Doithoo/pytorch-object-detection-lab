@@ -19,7 +19,7 @@ uv run detect show-config --config configs/reference_fasterrcnn.yaml
 | `fasterrcnn_resnet50_fpn.yaml` | 尝试更大的 Faster R-CNN backbone | `none`；默认不下载权重 |
 | `ssdlite320_mobilenet_v3.yaml` | 尝试单阶段 SSDLite | `none`；默认不下载权重 |
 
-项目发布的完整训练结果只来自 `reference_fasterrcnn.yaml` 的 Kaggle v7 运行。其他配置
+项目发布的完整训练结果只来自 `reference_fasterrcnn.yaml` 的已完成 Kaggle 训练。其他配置
 没有发布完整 VOC 成绩。
 
 ## 推荐选择

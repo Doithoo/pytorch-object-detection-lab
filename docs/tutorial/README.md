@@ -26,9 +26,9 @@ Both approaches work:
   [Kaggle guide](../guides/kaggle.md), then read the tutorial.
 - To understand the model first, read Chapters 00, 02, and 03 before training.
 
-The only complete training result published by this project comes from Kaggle
-v7. Synthetic tensors, randomly initialized models, and CPU dry runs in the
-tutorial isolate one idea; they are not model scores.
+The only complete training result published by this project comes from the
+completed Kaggle run. Synthetic tensors, randomly initialized models, and CPU
+dry runs in the tutorial isolate one idea; they are not model scores.
 
 After your run finishes, compare its `metrics.csv`, `evaluation.json`, and
 prediction images with the [saved Kaggle run](../recorded-run/README.md).

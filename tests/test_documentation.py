@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import shlex
 from pathlib import Path
@@ -136,6 +137,26 @@ def test_readmes_state_workflow_and_metric_scope(readme: Path) -> None:
     assert WORKFLOW in content
     assert "0.322312" in content
     assert "docs/recorded-run/" in content
+
+
+def test_publication_pages_do_not_expose_numbered_kaggle_revisions() -> None:
+    historical_url = "https://www.kaggle.com/code/yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7"
+    failures = []
+    patterns = (r"(?i)\bkaggle\s+v\d+\b", r"(?i)\bgpu-run-v\d+\b")
+    for source in _publication_pages():
+        content = source.read_text(encoding="utf-8").replace(historical_url, "")
+        for pattern in patterns:
+            if match := re.search(pattern, content):
+                failures.append(f"{source.relative_to(ROOT)}: {match.group(0)}")
+
+    assert not failures, "numbered Kaggle revisions in published docs:\n" + "\n".join(failures)
+
+
+def test_kaggle_metadata_uses_stable_user_facing_identifier() -> None:
+    path = ROOT / "docs" / "recorded-run" / "kaggle" / "kernel-metadata.json"
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    assert metadata["id"] == "yashowhoo/pytorch-object-detection-lab-voc2007-gpu"
+    assert metadata["title"] == "PyTorch Object Detection Lab VOC2007 GPU"
 
 
 def test_documented_detect_commands_use_real_parser_options() -> None:

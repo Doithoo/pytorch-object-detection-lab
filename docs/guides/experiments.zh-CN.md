@@ -65,4 +65,4 @@ uv run detect compare-runs artifacts/experiment-a artifacts/experiment-b --metri
 根据 test 结果继续反复修改设置。
 
 带样本上限或很少轮次的运行只能说明那次小规模尝试发生了什么。项目当前发布的完整 VOC
-结果仍只有 [Kaggle v7 训练](../recorded-run/README.zh-CN.md)。
+结果仍只有[已完成的 Kaggle 训练](../recorded-run/README.zh-CN.md)。

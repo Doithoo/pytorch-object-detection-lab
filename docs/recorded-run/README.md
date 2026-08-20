@@ -61,7 +61,6 @@ to read them together.
 
 ## How the run was made
 
-- Kaggle kernel: `yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7`
 - Page: <https://www.kaggle.com/code/yashowhoo/pytorch-object-detection-lab-voc2007-gpu-run-v7>
 - Device: `cuda:0`, Tesla T4. Kaggle allocated two; the project used one.
 - Data: official VOC 2007 with 2,501 / 2,510 / 4,952 train / valid / test images.
@@ -69,6 +68,10 @@ to read them together.
 - Training: 26 epochs, CUDA AMP, and two data workers.
 - Selection: validation `map_50_95` after every epoch saved the best model.
 - Test: one evaluation with `best.pt` after all training finished.
+
+The suffix in the page URL is part of the original Kaggle submission address.
+It is not a model, tutorial, or project version, and new runs do not need to
+use it.
 
 The submitted files are [`kaggle/run_kaggle.py`](kaggle/run_kaggle.py) and
 [`kaggle/kernel-metadata.json`](kaggle/kernel-metadata.json). The runner embeds

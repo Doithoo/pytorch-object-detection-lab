@@ -115,9 +115,10 @@ Common failures already seen in real runs
 
 Explain plainly that `kagglehub` is not required for this runner. Include the
 three observed failures and their direct fixes: unattached source archive in
-v4, non-interactive dataset attachment in v5, and P100 `sm_60` incompatibility
-in v6. State that T4 x2 may be displayed while this single-device project uses
-only one T4. Use the completed v7 run as the expected example.
+an earlier missing source archive, an attempted non-interactive dataset
+attachment, and P100 `sm_60` incompatibility. State that T4 x2 may be displayed
+while this single-device project uses only one T4. Use the completed run as the
+expected example.
 
 - [ ] **Step 2: Simplify the environment chapter**
 
@@ -204,7 +205,7 @@ Open with the result table and visual examples. Follow with "How this run was
 made" and "Files you can inspect". Move hashes, exact library versions, source
 archive identity, and omitted large files to a final reproducibility-details
 section. Keep every recorded number unchanged and clearly state that all
-published training results come from Kaggle v7.
+published training results come from the completed Kaggle run.
 
 - [ ] **Step 5: Check that no non-Kaggle run is presented as a result**
 
@@ -347,7 +348,7 @@ Confirm the following in the rendered source order:
 
 ```text
 Kaggle is the obvious first training choice.
-The exact v7 result is easy to find and is the only completed training result.
+The recorded Kaggle result is easy to find and is the only completed training result.
 Local training is available but clearly optional.
 Every beginner chapter has a clear next step.
 Technical details remain reachable without dominating the main path.

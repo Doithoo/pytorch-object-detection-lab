@@ -78,7 +78,7 @@ Look under `evaluation/`:
 - `visualizations/` shows where the model succeeded or failed.
 
 Practice with the [saved result](../recorded-run/README.md), then inspect your
-own files. The published Kaggle v7 result is
+own files. The published Kaggle result is
 `mAP@0.5:0.95 = 0.322312` and `mAP@0.5 = 0.609917`.
 
 ## 7. Choose what to explore next

@@ -10,19 +10,19 @@ from Kaggle generating the results page and are not the training failure.
 ### `expected one project archive, found []`
 
 This is an old runner that expects a manually attached source archive. The
-current v7 [`run_kaggle.py`](../recorded-run/kaggle/run_kaggle.py) embeds its
+current [`run_kaggle.py`](../recorded-run/kaggle/run_kaggle.py) embeds its
 source. Confirm that metadata points to this file and submit again.
 
 ### `New Datasets cannot be attached in non-interactive sessions`
 
-This is an older version that calls `kagglehub.dataset_download` while running.
+This is an earlier runner that calls `kagglehub.dataset_download` while running.
 The current runner needs neither a Dataset nor `kagglehub`; `dataset_sources`
 should be empty.
 
 ### `no kernel image is available for execution on the device`
 
 The job received a Tesla P100. The current Kaggle PyTorch build does not support
-P100 `sm_60`. Select a T4 or newer GPU in Settings and create a new version.
+P100 `sm_60`. Select a T4 or newer GPU in Settings and submit the job again.
 
 ### The page shows T4 x2, but only one GPU works
 
@@ -103,4 +103,4 @@ Near-zero values from random weights or a small dry run are normal and are not
 training scores. For a complete run, inspect `metrics.csv`, `evaluation.json`,
 `per_class.csv`, `errors.csv`, and prediction images in that order. Confirm
 completed epochs, best epoch, and data counts before diagnosing the model.
-Compare with the [Kaggle v7 record](../recorded-run/README.md) when useful.
+Compare with the [completed Kaggle record](../recorded-run/README.md) when useful.

@@ -44,7 +44,7 @@ kaggle auth login --force
 
 ```json
 {
-  "id": "你的用户名/pytorch-object-detection-lab-voc2007-gpu-run-v7",
+  "id": "你的用户名/pytorch-object-detection-lab-voc2007-gpu",
   "enable_gpu": "true",
   "enable_internet": "true",
   "machine_shape": "NvidiaTeslaT4"
@@ -64,7 +64,7 @@ kaggle kernels push -p docs/recorded-run/kaggle
 命令成功后会返回 Kaggle 页面地址。也可以查询状态：
 
 ```bash
-kaggle kernels status <你的用户名>/pytorch-object-detection-lab-voc2007-gpu-run-v7
+kaggle kernels status <你的用户名>/pytorch-object-detection-lab-voc2007-gpu
 ```
 
 第一次提交后，在网页的 Settings 中确认：
@@ -101,14 +101,14 @@ Kaggle 可能显示 `GPU T4 x2`。本项目是单设备训练，只使用 `cuda:
 - `best_epoch` 已记录。
 - 测试评估使用 4,952 张图像。
 
-已发布 v7 的网页总时间是 `3223.9s`。你的运行会因 Kaggle 机器和网络略有变化。
+已完成的参考训练总时间是 `3223.9s`。你的运行会因 Kaggle 机器和网络略有变化。
 
 ## 6. 下载训练产物
 
 完整输出中还包含约 1.7 GB 的临时 VOC 数据。通常只需下载 `artifacts`：
 
 ```bash
-kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu-run-v7 --file-pattern 'artifacts/.*' -p kaggle-output
+kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu --file-pattern 'artifacts/.*' -p kaggle-output
 ```
 
 下载后重点查看：
@@ -134,12 +134,12 @@ kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu
 FileNotFoundError: expected one project archive, found []
 ```
 
-当前 v7 runner 已内嵌精确源码，不需要手动上传压缩包。确认 metadata 的 `code_file` 指向
-仓库内当前 `run_kaggle.py`，不要使用旧版本脚本。
+当前 runner 已内嵌精确源码，不需要手动上传压缩包。确认 metadata 的 `code_file` 指向
+仓库内当前 `run_kaggle.py`，不要使用旧脚本。
 
 ### 非交互任务不能临时挂载新 Dataset
 
-另一版 runner 在运行时调用 `kagglehub.dataset_download`，Kaggle 返回：
+早期 runner 在运行时调用 `kagglehub.dataset_download`，Kaggle 返回：
 
 ```text
 New Datasets cannot be attached in non-interactive sessions

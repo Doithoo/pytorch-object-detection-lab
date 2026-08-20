@@ -9,19 +9,19 @@
 
 ### `expected one project archive, found []`
 
-使用了旧 runner，它期待手动附加源码压缩包。当前 v7
+使用了旧 runner，它期待手动附加源码压缩包。当前
 [`run_kaggle.py`](../recorded-run/kaggle/run_kaggle.py) 已内嵌源码。确认 metadata 的
 `code_file` 指向这个文件并重新提交。
 
 ### `New Datasets cannot be attached in non-interactive sessions`
 
-使用了运行时调用 `kagglehub.dataset_download` 的旧版本。当前 runner 不需要 Dataset 或
+使用了运行时调用 `kagglehub.dataset_download` 的旧 runner。当前 runner 不需要 Dataset 或
 `kagglehub`，`dataset_sources` 应为空。
 
 ### `no kernel image is available for execution on the device`
 
 任务分配了 Tesla P100。当前 Kaggle PyTorch 不支持 P100 的 `sm_60`。在 Settings 中选择
-T4 或更新 GPU，再创建新版本。
+T4 或更新 GPU，再重新提交任务。
 
 ### 页面显示 T4 x2，但只有一张卡工作
 
@@ -82,4 +82,4 @@ T4 或更新 GPU，再创建新版本。
 随机权重或少量样本 dry run 接近零很正常，它们不是训练成绩。对于完整训练，依次查看
 `metrics.csv`、`evaluation.json`、`per_class.csv`、`errors.csv` 和预测图。先确认训练完成
 轮数、最佳轮次和数据数量，再判断模型问题。可以与
-[Kaggle v7 记录](../recorded-run/README.zh-CN.md)对照文件结构和数值。
+[已完成的 Kaggle 记录](../recorded-run/README.zh-CN.md)对照文件结构和数值。

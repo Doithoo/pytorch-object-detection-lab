@@ -72,4 +72,4 @@ settings from test results.
 
 A run with sample limits or very few epochs only describes that small trial.
 The project's only published complete VOC result remains the
-[Kaggle v7 training run](../recorded-run/README.md).
+[completed Kaggle training run](../recorded-run/README.md).

@@ -27,7 +27,7 @@
 
 ![Kaggle 训练所得模型在 VOC 2007 测试图像上的预测](docs/recorded-run/evaluation/visualizations/summary.png)
 
-这是 Kaggle v7 运行中保存的真实预测，不是示意图。完整指标、各类别结果、误检和漏检
+这是已完成的 Kaggle 训练中保存的真实预测，不是示意图。完整指标、各类别结果、误检和漏检
 案例见 [Kaggle 训练记录](docs/recorded-run/README.zh-CN.md)。仓库只发布这一组完整训练
 结果；小样本运行和合成示例只用于理解代码。
 
@@ -61,7 +61,7 @@ Kaggle 用户名。保留 `enable_gpu: true` 和 `enable_internet: true`。
 
 ```bash
 kaggle kernels push -p docs/recorded-run/kaggle
-kaggle kernels status <你的用户名>/pytorch-object-detection-lab-voc2007-gpu-run-v7
+kaggle kernels status <你的用户名>/pytorch-object-detection-lab-voc2007-gpu
 ```
 
 然后在 Kaggle 网页打开该任务。确认分配的是 T4 或更新的 GPU。页面可能显示 T4 x2，
@@ -73,7 +73,7 @@ kaggle kernels status <你的用户名>/pytorch-object-detection-lab-voc2007-gpu
 状态变成 `COMPLETE` 后，只下载训练产物，避免把临时 VOC 数据一起下载：
 
 ```bash
-kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu-run-v7 --file-pattern 'artifacts/.*' -p kaggle-output
+kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu --file-pattern 'artifacts/.*' -p kaggle-output
 ```
 
 从 `kaggle-output` 开始查看：

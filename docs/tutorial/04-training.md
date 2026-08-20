@@ -62,8 +62,8 @@ Each epoch has two phases:
 2. valid: keep parameters fixed and compute validation mAP and recall.
 
 The runner prints a heartbeat every 60 seconds during long training or
-evaluation phases. If heartbeats continue, do not stop or resubmit. The complete
-v7 run spent 3,025.660 seconds, about 50 minutes, training.
+evaluation phases. If heartbeats continue, do not stop or resubmit. The completed
+Kaggle run spent 3,025.660 seconds, about 50 minutes, training.
 
 Each epoch is also written to `metrics.csv`. Start with:
 

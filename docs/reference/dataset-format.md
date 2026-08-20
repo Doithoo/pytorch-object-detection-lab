@@ -2,7 +2,7 @@
 
 [Simplified Chinese](dataset-format.zh-CN.md) | [VOC 2007 protocol](voc2007.md)
 
-This reference defines the runtime dataset format in version 0.1. It is for data authors, extension maintainers, and anyone checking experiment identity. The provider accepts the 20 VOC classes only; arbitrary-class datasets require code changes.
+This reference defines the runtime manifest format used by the VOC-shaped and COCO JSON providers. It is for data authors, maintainers, and anyone checking experiment identity.
 
 ## Source tree and XML
 
@@ -40,6 +40,7 @@ Rows preserve split-file order. The CSV files reference source data; they do not
 | `identity` | combined SHA-256 experiment identity |
 | `coordinate_convention` | exact string `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
 | `schema_version` | integer manifest schema version, currently `3` |
+| `annotation_format` | `voc` or `coco`; selects the annotation parser |
 | `annotation_format` | `voc` or `coco`; selects the annotation parser |
 
 `split_hashes` cover source content and `manifest_hashes` cover the exact published CSV bytes. Runtime loading validates the schema version, class order and label mapping, split counts, CSV hashes, and metadata identity before constructing a dataset. If any manifest file changes, regenerate the manifests instead of editing it by hand.

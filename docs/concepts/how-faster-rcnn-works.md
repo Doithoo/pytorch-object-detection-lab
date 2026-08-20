@@ -1,6 +1,6 @@
 # How Faster R-CNN Works in This Project
 
-[Simplified Chinese](how-faster-rcnn-works.zh-CN.md) | [Tutorial chapter](../tutorial/03-faster-rcnn.md)
+[Simplified Chinese](how-faster-rcnn-works.zh-CN.md) | [Detector notes](../tutorial/03-faster-rcnn.md)
 
 This page is for readers who know tensors and want a closer look at the maintained Faster R-CNN models. It explains torchvision's public inputs and outputs rather than reimplementing the model.
 
@@ -68,4 +68,4 @@ Expected output names the four losses and the three prediction keys. The example
 
 Labels must start at 1 because 0 is background. Boxes must be finite, positive-area, zero-based continuous `xyxy`. Images and targets must remain one-to-one lists. A dry run extends the example with one optimizer update on prepared data; a small run adds validation and outputs. Neither is the [completed Kaggle VOC training run](../recorded-run/README.md).
 
-Continue with [Tutorial 04](../tutorial/04-training.md) for optimization and artifact ownership, or read the [model reference](../reference/model-zoo.md) to compare the two Faster R-CNN backbones with SSDLite.
+Continue with [training notes](../tutorial/04-training.md) for optimization and artifact ownership, or read the [model reference](../reference/model-zoo.md) to compare the detector entries.

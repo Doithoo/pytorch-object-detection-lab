@@ -20,7 +20,7 @@
 
 ## 我想理解项目代码
 
-- [学习路线](tutorial/learning-path.zh-CN.md)：从边界框到训练结果的完整地图。
+- [阅读路径](tutorial/learning-path.zh-CN.md)：从边界框到一次实测结果的一种阅读方式。
 - [检测流程](concepts/detection-flow.zh-CN.md)：一张图像怎样经过数据集、模型和评估。
 - [Faster R-CNN 原理](concepts/how-faster-rcnn-works.zh-CN.md)：RPN、ROI 和损失项。
 - [代码导览](concepts/code-tour.zh-CN.md)：CLI、数据、模型、训练和评估代码在哪里。

@@ -1,6 +1,6 @@
-# From Bounding Boxes to Kaggle Training
+# From Bounding Boxes to a Recorded Run
 
-[简体中文](learning-path.zh-CN.md) | [Tutorial index](README.md)
+[简体中文](learning-path.zh-CN.md) | [reference index](README.md)
 
 This route is for readers who know basic Python and have seen tensors and
 gradients, but have not trained an object detector end to end. You do not need

@@ -28,6 +28,9 @@ DOC_GROUPS = {
     "guides": [
         "using-models",
         "using-your-data",
+        "using-coco",
+        "using-yolo",
+        "modifying-models",
         "experiments",
         "kaggle",
         "troubleshooting",

@@ -22,8 +22,8 @@ The completed Kaggle T4 run and its real outputs are in the
 
 ## I want to understand the code
 
-- [Learning path](tutorial/learning-path.md): the complete map from boxes to a
-  trained result.
+- [Reading path](tutorial/learning-path.md): one possible route from boxes to a
+  recorded result.
 - [Detection flow](concepts/detection-flow.md): how an image moves through the
   dataset, model, and evaluation code.
 - [How Faster R-CNN works](concepts/how-faster-rcnn-works.md): RPN, ROI, and the

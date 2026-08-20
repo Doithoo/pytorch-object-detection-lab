@@ -1,6 +1,6 @@
-# 从边界框到 Kaggle 训练
+# 从边界框到一次实测运行
 
-[English](learning-path.md) | [教程索引](README.zh-CN.md)
+[English](learning-path.md) | [参考索引](README.zh-CN.md)
 
 这条路线适合会写基本 Python、接触过 Tensor 和梯度，但还没有完整训练过目标检测模型的
 读者。你不需要先准备本地 GPU。Kaggle runner 会自动完成：

@@ -9,8 +9,8 @@
 这是一个面向初学者的 PyTorch 目标检测项目。你将使用 torchvision 的 Faster R-CNN
 学习边界框、VOC 数据、训练、评估和预测，并在 Kaggle 的免费 GPU 上完成一次真实训练。
 
-不需要先配置本地 CUDA，也不需要先读完所有参考文档。建议从 Kaggle 开始，遇到概念时
-再回到对应教程。
+不需要先配置本地 CUDA，也不需要先读完所有参考页面。可以从 Kaggle 开始，遇到概念时
+再查看对应说明。
 
 ## 已完成的 Kaggle 训练
 
@@ -87,16 +87,16 @@ kaggle kernels output <你的用户名>/pytorch-object-detection-lab-voc2007-gpu
 
 从账户准备到故障处理的完整步骤见 [Kaggle 训练指南](docs/guides/kaggle.zh-CN.md)。
 
-## 推荐学习顺序
+# 参考页面与说明
 
-不必一次读完所有页面。按下面的顺序边运行边看即可：
+不必一次读完所有页面。按你当前要解决的问题选择相关内容：
 
-1. [先看学习路线](docs/tutorial/learning-path.zh-CN.md)，了解每一步在做什么。
+1. [先看文档导航](docs/README.zh-CN.md)，选择与你当前问题相关的页面。
 2. [理解图像、标签和边界框](docs/tutorial/00-basics.zh-CN.md)。
-3. [认识 VOC 数据](docs/tutorial/02-data-and-boxes.zh-CN.md)。
-4. [理解 Faster R-CNN](docs/tutorial/03-faster-rcnn.zh-CN.md)。
-5. [在 Kaggle 训练](docs/tutorial/04-training.zh-CN.md)。
-6. [读懂评估与预测](docs/tutorial/05-evaluation-and-inference.zh-CN.md)。
+3. [查看 VOC 数据](docs/tutorial/02-data-and-boxes.zh-CN.md)。
+4. [阅读 Faster R-CNN 的组成](docs/tutorial/03-faster-rcnn.zh-CN.md)。
+5. [运行已记录的 Kaggle 流程](docs/tutorial/04-training.zh-CN.md)。
+6. [查看评估和预测产物](docs/tutorial/05-evaluation-and-inference.zh-CN.md)。
 
 完整导航见[文档首页](docs/README.zh-CN.md)。
 
@@ -121,7 +121,7 @@ uv run detect train --config configs/learning_minimal.yaml --dry-run --device cp
 ```
 
 本地完整训练只推荐给已有兼容 GPU 的读者，命令和注意事项放在
-[训练教程的可选章节](docs/tutorial/04-training.zh-CN.md)中。
+[参考说明的可选章节](docs/tutorial/04-training.zh-CN.md)中。
 
 ## 项目中可以学到什么
 
@@ -157,5 +157,3 @@ uv run pytest -W error::DeprecationWarning
 
 测试使用合成数据和临时文件，不会下载 VOC 或预训练权重。贡献代码前请阅读
 [贡献指南](CONTRIBUTING.zh-CN.md)。项目采用 [MIT License](LICENSE)。
-
-<!-- Documentation path: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->

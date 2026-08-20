@@ -2,7 +2,7 @@
 
 [Simplified Chinese](adding-datasets.zh-CN.md) | [Dataset format](../reference/dataset-format.md)
 
-This maintainer guide applies when the source cannot satisfy the supported VOC-shaped layout. Version 0.1 registers only `voc2007`; `data.name` rejects every other value. There is no stable external provider or plugin API, so this work is an internal code change with a compatibility obligation.
+This maintainer guide covers adding a new prepared-data provider when VOC-shaped or COCO JSON input is not enough. Existing provider selection is available through `data.name`; a new provider must preserve the shared manifest and target contracts.
 
 ## Keep preparation and loading separate
 
@@ -19,7 +19,7 @@ A provider must publish fixed train, valid, and test membership, reject duplicat
 
 1. Add format parsing and validation under `src/object_detector/data/`. Keep source-coordinate conversion in the parser.
 2. Add a preparation function that writes the schemas documented in [dataset format](../reference/dataset-format.md) through staging and atomic replacement.
-3. Add a manifest-backed `Dataset` that returns the canonical target below. Add selection in configuration and orchestration only after defining a real internal registry or an explicit second-provider dispatch.
+Add preparation and runtime loading for the new format, then update configuration dispatch, preflight, checkpoint identity, documentation, packaging, and tests together.
 4. Update preflight, checkpoint identity, evaluation, examples, and bilingual documentation together.
 
 The canonical item is `image: float32 Tensor[3,H,W]` in RGB `[0,1]` plus:

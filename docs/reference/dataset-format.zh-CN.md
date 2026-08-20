@@ -2,7 +2,7 @@
 
 [English](dataset-format.md) | [VOC 2007 协议](voc2007.zh-CN.md)
 
-本参考定义版本 0.1 唯一的运行时数据集规则，适合数据作者、扩展维护者和实验标识审计者。提供器接受 Pascal VOC 形状目录和任意非空类别名。
+本参考定义 VOC 形状提供器和 COCO JSON 提供器使用的运行时清单格式，适合数据作者、维护者和检查实验身份的读者。
 
 ## 源目录与 XML
 
@@ -42,6 +42,7 @@ VOC 坐标一基且端点包含。解析后得到零基连续 `xyxy`：`(xmin - 
 | `identity` | 组合后的 SHA-256 实验标识 |
 | `coordinate_convention` | 精确字符串 `zero-based continuous xyxy; xmax/ymax are exclusive pixel boundaries` |
 | `schema_version` | 清单格式版本整数，当前为 `3` |
+| `annotation_format` | `voc` 或 `coco`，选择标注解析器 |
 | `annotation_format` | `voc` 或 `coco`，选择标注解析器 |
 
 `split_hashes` 覆盖源内容，`manifest_hashes` 覆盖已发布 CSV 的精确字节。运行时会在构造数据集前校验格式版本、类别顺序与标签映射、划分数量、CSV 摘要和元数据标识。如果清单文件发生变化，请重新生成清单，不要手工编辑。

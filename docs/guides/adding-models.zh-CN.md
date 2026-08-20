@@ -1,6 +1,6 @@
 # 添加内部模型
 
-[English](adding-models.md) | [模型规则教程](../tutorial/03-faster-rcnn.zh-CN.md)
+[English](adding-models.md) | [模型行为说明](../tutorial/03-faster-rcnn.zh-CN.md)
 
 本指南面向需要加入不同检测器家族或受控对比模型的维护者，也说明显式外部 `module:function` 工厂。检查点不会序列化用户的可执行代码；外部模型会记录工厂路径，并在恢复时要求该路径仍可导入。
 

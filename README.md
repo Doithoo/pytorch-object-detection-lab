@@ -12,7 +12,7 @@ evaluation, and prediction, then complete a real training run on a free Kaggle
 GPU.
 
 You do not need to configure local CUDA or read every reference page first.
-Start on Kaggle and return to the tutorials when you want to understand a
+Start on Kaggle and return to the reference notes when you want to understand a
 concept in more depth.
 
 ## Completed Kaggle training
@@ -100,17 +100,17 @@ The [Kaggle training guide](docs/guides/kaggle.md) covers account setup,
 monitoring, downloads, and the failures already encountered while producing
 the recorded run.
 
-## Recommended learning order
+# Reference notes and guides
 
-You do not need to read everything at once. Follow these pages while you run
-the project:
+You do not need to read everything at once. Choose the pages that match the
+question you are working on:
 
-1. [Read the learning path](docs/tutorial/learning-path.md) for the big picture.
+1. [Read the repository overview](docs/README.md) and choose a relevant page.
 2. [Understand images, labels, and boxes](docs/tutorial/00-basics.md).
-3. [Meet the VOC dataset](docs/tutorial/02-data-and-boxes.md).
-4. [Understand Faster R-CNN](docs/tutorial/03-faster-rcnn.md).
-5. [Train on Kaggle](docs/tutorial/04-training.md).
-6. [Read evaluation and predictions](docs/tutorial/05-evaluation-and-inference.md).
+3. [Inspect the VOC data](docs/tutorial/02-data-and-boxes.md).
+4. [Read how Faster R-CNN is assembled](docs/tutorial/03-faster-rcnn.md).
+5. [Run the recorded Kaggle workflow](docs/tutorial/04-training.md).
+6. [Read evaluation and prediction outputs](docs/tutorial/05-evaluation-and-inference.md).
 
 See the [documentation home](docs/README.md) for every guide and reference.
 
@@ -138,7 +138,7 @@ uv run detect train --config configs/learning_minimal.yaml --dry-run --device cp
 
 Full local training is intended for readers who already have a compatible GPU.
 The command and considerations are in the
-[optional section of the training tutorial](docs/tutorial/04-training.md).
+[reference notes](docs/tutorial/learning-path.md).
 
 ## What you can learn here
 
@@ -177,5 +177,3 @@ uv run pytest -W error::DeprecationWarning
 Tests use synthetic data and temporary files; they do not download VOC or
 pretrained weights. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 The project uses the [MIT License](LICENSE).
-
-<!-- Documentation path: download -> prepare -> inspect -> dry run -> train -> evaluate -> predict | recorded full-VOC score 0.322312 -->

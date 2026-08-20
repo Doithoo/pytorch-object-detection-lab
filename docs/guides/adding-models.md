@@ -1,6 +1,6 @@
 # Add an Internal Model
 
-[Simplified Chinese](adding-models.zh-CN.md) | [Model behavior tutorial](../tutorial/03-faster-rcnn.md)
+[Simplified Chinese](adding-models.zh-CN.md) | [Model behavior notes](../tutorial/03-faster-rcnn.md)
 
 This maintainer guide covers registered built-in detectors and explicit external
 `module:function` factories. Checkpoints never serialize executable user code;

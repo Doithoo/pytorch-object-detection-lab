@@ -1,6 +1,6 @@
 # 本项目中的 Faster R-CNN 工作原理
 
-[English](how-faster-rcnn-works.md) | [教程章节](../tutorial/03-faster-rcnn.zh-CN.md)
+[English](how-faster-rcnn-works.md) | [检测器说明](../tutorial/03-faster-rcnn.zh-CN.md)
 
 本页适合已经理解张量、想进一步了解 Faster R-CNN 各部分职责的读者。内容解释 torchvision 的公开输入输出，不重新实现模型。
 
@@ -68,4 +68,4 @@ uv run python examples/03_model_contract.py
 
 0 是背景，因此目标标签必须从 1 开始。检测框必须有限、有正面积，并采用零基连续 `xyxy`。图像与目标必须保持一一对应的列表。dry run 在示例基础上对准备数据执行一次优化器更新；小规模训练再加入验证和输出。两者都不是[已完成的 Kaggle VOC 训练](../recorded-run/README.zh-CN.md)。
 
-接下来阅读[教程 04](../tutorial/04-training.zh-CN.md)了解优化和产物职责，或查看[模型参考](../reference/model-zoo.zh-CN.md)，比较两个 Faster R-CNN 骨干网络与 SSDLite。
+接下来阅读[训练说明](../tutorial/04-training.zh-CN.md)了解优化和产物职责，或查看[模型参考](../reference/model-zoo.zh-CN.md)，比较项目中的检测器。

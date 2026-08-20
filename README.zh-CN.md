@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue)](pyproject.toml)
-[![CI](https://github.com/Yashowhoo/pytorch-object-detection-lab/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Doithoo/pytorch-object-detection-lab/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 
 **English: [README.md](README.md)**
 
@@ -43,7 +43,7 @@ download -> prepare -> inspect -> dry run -> train -> evaluate -> predict
 ### 1. 获取项目并安装 Kaggle CLI
 
 ```bash
-git clone https://github.com/Yashowhoo/pytorch-object-detection-lab.git
+git clone https://github.com/Doithoo/pytorch-object-detection-lab.git
 cd pytorch-object-detection-lab
 uv tool install kaggle
 kaggle auth login

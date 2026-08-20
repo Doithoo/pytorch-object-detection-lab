@@ -46,11 +46,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
-Repository = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
-Documentation = "https://github.com/Yashowhoo/pytorch-object-detection-lab#readme"
-Source = "https://github.com/Yashowhoo/pytorch-object-detection-lab"
-Issues = "https://github.com/Yashowhoo/pytorch-object-detection-lab/issues"
+Homepage = "https://github.com/Doithoo/pytorch-object-detection-lab"
+Repository = "https://github.com/Doithoo/pytorch-object-detection-lab"
+Documentation = "https://github.com/Doithoo/pytorch-object-detection-lab#readme"
+Source = "https://github.com/Doithoo/pytorch-object-detection-lab"
+Issues = "https://github.com/Doithoo/pytorch-object-detection-lab/issues"
 
 [project.scripts]
 detect = "object_detector.cli:main"

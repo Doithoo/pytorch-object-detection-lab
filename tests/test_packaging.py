@@ -111,7 +111,7 @@ def test_publication_metadata_and_configs_are_declared() -> None:
 
     project = metadata["project"]
     assert isinstance(project, dict)
-    assert project["urls"]["Source"] == "https://github.com/Yashowhoo/pytorch-object-detection-lab"
+    assert project["urls"]["Source"] == "https://github.com/Doithoo/pytorch-object-detection-lab"
     dev_dependencies = project["optional-dependencies"]["dev"]
     assert "tomli>=2,<3; python_version < '3.11'" in dev_dependencies
     assert "setuptools>=77,<82" in dev_dependencies

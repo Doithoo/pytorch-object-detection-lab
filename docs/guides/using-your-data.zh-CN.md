@@ -2,11 +2,7 @@
 
 [English](using-your-data.md) | [数据格式](../reference/dataset-format.zh-CN.md)
 
-如果数据已经使用 Pascal VOC 的 JPEG、XML 和划分文本格式，可以复用项目的数据准备、
-训练和评估代码。本指南适合仍使用项目内置 20 个 VOC 类别的数据。
-
-要支持任意新类别，需要修改 `VOC_CLASSES`、类别数、模型 checkpoint 信息和测试，这不在
-本页范围内。
+如果数据已经使用 Pascal VOC 形状的 JPEG、XML 和划分文本格式，可以复用项目的数据准备、训练和评估代码。生成的 `dataset.yaml` 会从全部通过校验的 XML 中推导前景类别，并写入稳定的有序标签映射。官方 VOC 2007 仍保持发布的 20 类顺序。
 
 ## 目录结构
 
@@ -22,7 +18,7 @@ my-data/
         └── JPEGImages/
 ```
 
-每个图像 ID 需要同名 `.jpg` 和 `.xml`。XML 中的类别必须属于 VOC 20 类，`difficult`
+每个图像 ID 需要同名 `.jpg` 和 `.xml`。XML 类别名必须非空，并且在源数据中保持一致；`difficult`
 可以省略或为 `0` / `1`。坐标使用 VOC 的 1-based inclusive 格式。
 
 ## 准备并查看数据
@@ -40,11 +36,11 @@ uv run python scripts/preview_dataset.py data/my-manifests --data-dir my-data --
 
 ## 用少量样本检查训练
 
-把配置路径覆盖为自己的目录：
+覆盖数据路径，并在训练前把预期类别数改成前景类别数量加背景：
 
 ```bash
 uv run detect show-config --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check
-uv run detect train --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check --dry-run --device cpu
+uv run detect train --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set model.expected_num_classes 4 --set run_name my-data-check --dry-run --device cpu
 ```
 
 看到 `dry-run OK` 后，说明一批图像和标注可以完成一次更新。它不保存模型。

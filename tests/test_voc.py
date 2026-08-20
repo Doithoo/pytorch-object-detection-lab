@@ -37,7 +37,20 @@ def test_degenerate_box_is_rejected(tmp_path: Path) -> None:
         parse_voc_annotation(xml)
 
 
-def test_unknown_class_names_the_object_index(tmp_path: Path) -> None:
+def test_custom_class_names_can_be_allowed_explicitly(tmp_path: Path) -> None:
+    xml = tmp_path / "custom.xml"
+    xml.write_text(
+        "<annotation><filename>x.jpg</filename><size><width>20</width>"
+        "<height>10</height></size><object><name>dragon</name><bndbox>"
+        "<xmin>1</xmin><ymin>1</ymin><xmax>5</xmax><ymax>5</ymax>"
+        "</bndbox></object></annotation>",
+        encoding="utf-8",
+    )
+
+    annotation = parse_voc_annotation(xml, allowed_classes=("dragon",))
+
+    assert annotation.objects[0].class_name == "dragon"
+
     xml = tmp_path / "unknown.xml"
     xml.write_text(
         "<annotation><filename>x.jpg</filename><size><width>20</width>"

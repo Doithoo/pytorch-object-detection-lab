@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from pathlib import Path
 
 from object_detector.data.schema import VOC_CLASSES, VocAnnotation, VocObject
@@ -11,7 +12,7 @@ class VocFormatError(ValueError):
     """Raised when a Pascal VOC annotation violates the supported schema."""
 
 
-def parse_voc_annotation(path: Path) -> VocAnnotation:
+def parse_voc_annotation(path: Path, allowed_classes: Sequence[str] | None = VOC_CLASSES) -> VocAnnotation:
     try:
         root = ET.parse(path).getroot()
     except OSError as exc:
@@ -27,15 +28,23 @@ def parse_voc_annotation(path: Path) -> VocAnnotation:
     height = _positive_integer(_required_text(size, "height", path), path, "size.height")
 
     objects = tuple(
-        _parse_object(node, index, width, height, path) for index, node in enumerate(root.findall("object"))
+        _parse_object(node, index, width, height, path, allowed_classes)
+        for index, node in enumerate(root.findall("object"))
     )
     return VocAnnotation(filename=filename, width=width, height=height, objects=objects)
 
 
-def _parse_object(node: ET.Element, index: int, width: int, height: int, path: Path) -> VocObject:
+def _parse_object(
+    node: ET.Element,
+    index: int,
+    width: int,
+    height: int,
+    path: Path,
+    allowed_classes: Sequence[str] | None,
+) -> VocObject:
     prefix = f"{path}: object {index}"
     class_name = _required_text(node, "name", path)
-    if class_name not in VOC_CLASSES:
+    if allowed_classes is not None and class_name not in allowed_classes:
         raise VocFormatError(f"{prefix}: unknown class {class_name!r}")
 
     difficult_text = node.findtext("difficult", default="0").strip()

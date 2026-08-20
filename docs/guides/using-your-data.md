@@ -2,12 +2,7 @@
 
 [简体中文](using-your-data.zh-CN.md) | [Dataset format](../reference/dataset-format.md)
 
-If your data already follows Pascal VOC JPEG, XML, and split-text layout, you
-can reuse the project's preparation, training, and evaluation code. This guide
-assumes your objects still use the built-in 20 VOC classes.
-
-Supporting arbitrary new classes requires changes to `VOC_CLASSES`, class
-counts, checkpoint metadata, and tests and is outside this page.
+If your data already follows a Pascal VOC-shaped JPEG, XML, and split-text layout, you can reuse the project's preparation, training, and evaluation code. The provider infers the foreground classes from all validated XML files and writes a stable sorted label mapping into `dataset.yaml`. Official VOC 2007 keeps its published 20-class order.
 
 ## Directory layout
 
@@ -23,9 +18,9 @@ my-data/
         └── JPEGImages/
 ```
 
-Every image ID needs matching `.jpg` and `.xml` files. XML classes must be one
-of the 20 VOC names, `difficult` may be absent or `0` / `1`, and coordinates
-use VOC one-based inclusive format.
+Every image ID needs matching `.jpg` and `.xml` files. XML class names must be non-empty
+and consistent across the source; `difficult` may be absent or `0` / `1`, and
+coordinates use VOC one-based inclusive format.
 
 ## Prepare and inspect data
 
@@ -42,11 +37,11 @@ coordinate, or image-size problems in source XML, then regenerate manifests.
 
 ## Check training with a few samples
 
-Override the data paths:
+Override the data paths and update the expected class count before training:
 
 ```bash
 uv run detect show-config --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check
-uv run detect train --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set run_name my-data-check --dry-run --device cpu
+uv run detect train --config configs/learning_minimal.yaml --set data.data_dir my-data --set data.manifest_dir data/my-manifests --set model.expected_num_classes 4 --set run_name my-data-check --dry-run --device cpu
 ```
 
 `dry-run OK` means one image batch and its targets completed an update. It does

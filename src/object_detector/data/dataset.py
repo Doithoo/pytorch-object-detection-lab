@@ -75,7 +75,10 @@ class VocDetectionDataset(Dataset[tuple[torch.Tensor, DetectionTarget]]):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, DetectionTarget]:
         row = self.rows[index]
         image_path = self.dataset_root / row.image_path
-        annotation = parse_voc_annotation(self.dataset_root / row.annotation_path)
+        annotation = parse_voc_annotation(
+            self.dataset_root / row.annotation_path,
+            allowed_classes=self.metadata.class_names,
+        )
         try:
             with Image.open(image_path) as source:
                 image = pil_to_tensor(source.convert("RGB")).float().div(255.0)

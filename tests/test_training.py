@@ -33,7 +33,9 @@ def _config(prepared_voc: PreparedVoc, tmp_path: Path, epochs: int, run_name: st
             max_valid_samples=1,
             max_test_samples=1,
         ),
-        model=replace(config.model, name="fake", weights="none"),
+        model=replace(
+            config.model, name="fake", weights="none", expected_num_classes=len(prepared_voc.metadata.class_names) + 1
+        ),
         train=replace(config.train, epochs=epochs, batch_size=1, lr=0.1),
         device="cpu",
         output_dir=tmp_path / "artifacts",

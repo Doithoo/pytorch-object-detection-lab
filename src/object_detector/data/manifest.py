@@ -8,14 +8,13 @@ import os
 import shutil
 import tempfile
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 
 import yaml
 from PIL import Image, UnidentifiedImageError
 
-from object_detector.data.schema import VOC_CLASSES
 from object_detector.data.voc import VocFormatError, parse_voc_annotation
 
 VOC2007_SPLIT_COUNTS = {"train": 2501, "valid": 2510, "test": 4952}
@@ -68,16 +67,25 @@ def prepare_voc2007(
             if actual != expected:
                 raise ManifestError(f"{split_name} split has {actual} images; expected {expected}")
 
-    rows = {name: tuple(_validate_sample(voc_root, image_id) for image_id in ids) for name, ids in split_ids.items()}
+    rows_with_classes = {
+        name: tuple(_validate_sample(voc_root, image_id, allowed_classes=None) for image_id in ids)
+        for name, ids in split_ids.items()
+    }
+    rows = {name: tuple(item[0] for item in items) for name, items in rows_with_classes.items()}
+    class_names = tuple(
+        sorted({class_name for items in rows_with_classes.values() for _, names in items for class_name in names})
+    )
+    if not class_names:
+        raise ManifestError("annotations contain no object classes")
     split_hashes = {name: _rows_hash(items, voc_root) for name, items in rows.items()}
     manifest_hashes = {name: _manifest_hash(items) for name, items in rows.items()}
-    identity = _identity_for(split_hashes)
+    identity = _identity_for(class_names, split_hashes)
 
     metadata = DatasetMetadata(
         name="voc2007",
         dataset_root="VOCdevkit/VOC2007",
-        class_names=VOC_CLASSES,
-        label_by_name={name: index for index, name in enumerate(VOC_CLASSES, start=1)},
+        class_names=class_names,
+        label_by_name={name: index for index, name in enumerate(class_names, start=1)},
         split_counts={name: len(items) for name, items in rows.items()},
         split_hashes=split_hashes,
         manifest_hashes=manifest_hashes,
@@ -155,9 +163,11 @@ def _validate_metadata(metadata: DatasetMetadata, manifest_dir: Path) -> None:
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: unsupported dataset {metadata.name!r}")
     if metadata.dataset_root != "VOCdevkit/VOC2007":
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: dataset_root is not the VOC 2007 root")
-    if metadata.class_names != VOC_CLASSES:
-        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: class_names do not match the VOC class schema")
-    expected_labels = {name: index for index, name in enumerate(VOC_CLASSES, start=1)}
+    if not metadata.class_names or len(set(metadata.class_names)) != len(metadata.class_names):
+        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: class_names must be a nonempty unique sequence")
+    if not all(isinstance(name, str) and name.strip() for name in metadata.class_names):
+        raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: class_names must contain nonempty strings")
+    expected_labels = {name: index for index, name in enumerate(metadata.class_names, start=1)}
     if metadata.label_by_name != expected_labels:
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: label_by_name does not match class_names")
     if metadata.coordinate_convention != COORDINATE_CONVENTION:
@@ -170,7 +180,7 @@ def _validate_metadata(metadata: DatasetMetadata, manifest_dir: Path) -> None:
     ):
         if set(values) != expected_splits:
             raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: {field_name} must define train, valid, and test")
-    expected_identity = _identity_for(metadata.split_hashes)
+    expected_identity = _identity_for(metadata.class_names, metadata.split_hashes)
     if metadata.identity != expected_identity:
         raise ManifestError(f"{manifest_dir / 'dataset.yaml'}: identity does not match metadata contents")
     for split_name in ("train", "valid", "test"):
@@ -200,10 +210,10 @@ def verify_prepared_data(data_dir: Path, metadata: DatasetMetadata, manifest_dir
             raise ManifestError(f"{split_name} source files do not match dataset metadata")
 
 
-def _identity_for(split_hashes: Mapping[str, str]) -> str:
+def _identity_for(class_names: Sequence[str], split_hashes: Mapping[str, str]) -> str:
     identity_data = {
         "name": "voc2007",
-        "classes": VOC_CLASSES,
+        "classes": list(class_names),
         "coordinate_convention": COORDINATE_CONVENTION,
         "split_hashes": dict(split_hashes),
     }
@@ -238,7 +248,12 @@ def _validate_disjoint(split_ids: Mapping[str, tuple[str, ...]]) -> None:
                 raise ManifestError(f"split overlap between {left} and {right}: {preview}")
 
 
-def _validate_sample(voc_root: Path, image_id: str) -> ManifestRow:
+def _validate_sample(
+    voc_root: Path,
+    image_id: str,
+    *,
+    allowed_classes: Sequence[str] | None,
+) -> tuple[ManifestRow, tuple[str, ...]]:
     image_rel = Path("JPEGImages") / f"{image_id}.jpg"
     annotation_rel = Path("Annotations") / f"{image_id}.xml"
     image_path = voc_root / image_rel
@@ -248,7 +263,7 @@ def _validate_sample(voc_root: Path, image_id: str) -> ManifestRow:
     if not annotation_path.is_file():
         raise ManifestError(f"missing annotation for {image_id}: {annotation_path}")
     try:
-        annotation = parse_voc_annotation(annotation_path)
+        annotation = parse_voc_annotation(annotation_path, allowed_classes=allowed_classes)
     except VocFormatError as exc:
         raise ManifestError(str(exc)) from exc
     if annotation.filename != image_path.name:
@@ -265,7 +280,10 @@ def _validate_sample(voc_root: Path, image_id: str) -> ManifestRow:
             f"{annotation_path}: dimensions {annotation.width}x{annotation.height} "
             f"disagree with image {dimensions[0]}x{dimensions[1]}"
         )
-    return ManifestRow(image_id=image_id, image_path=image_rel.as_posix(), annotation_path=annotation_rel.as_posix())
+    return (
+        ManifestRow(image_id=image_id, image_path=image_rel.as_posix(), annotation_path=annotation_rel.as_posix()),
+        tuple(sorted({item.class_name for item in annotation.objects})),
+    )
 
 
 def _manifest_hash(rows: tuple[ManifestRow, ...]) -> str:

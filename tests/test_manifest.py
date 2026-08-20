@@ -20,7 +20,8 @@ def test_prepare_uses_official_splits_and_stable_hash(tmp_path: Path) -> None:
 
     assert first.split_counts == {"train": 2, "valid": 1, "test": 1}
     assert first.identity == second.identity
-    assert first.class_names[0] == "aeroplane"
+    assert first.class_names == ("cat", "dog", "person")
+    assert first.class_names[0] == "cat"
     assert (tmp_path / "manifests" / "dataset.yaml").is_file()
     assert (tmp_path / "manifests" / "source.yaml").is_file()
 
@@ -45,6 +46,20 @@ def test_production_counts_are_checked(tmp_path: Path) -> None:
         prepare_voc2007(voc_root.parent.parent, tmp_path / "manifests")
 
 
+def test_prepare_infers_custom_voc_classes_and_stable_labels(tmp_path: Path) -> None:
+    voc_root = build_voc_tree(tmp_path / "raw")
+    for annotation_path in (voc_root / "Annotations").glob("*.xml"):
+        content = annotation_path.read_text(encoding="utf-8").replace("<name>dog</name>", "<name>fox</name>")
+        annotation_path.write_text(content, encoding="utf-8")
+
+    metadata = prepare_voc2007(voc_root.parent.parent, tmp_path / "manifests", expected_split_counts=None)
+
+    assert metadata.class_names == ("cat", "fox", "person")
+    assert metadata.label_by_name == {"cat": 1, "fox": 2, "person": 3}
+    assert metadata.identity
+    assert load_dataset_metadata(tmp_path / "manifests").class_names == metadata.class_names
+
+
 def test_prepare_rejects_image_dimensions_that_disagree_with_xml(tmp_path: Path) -> None:
     voc_root = build_voc_tree(tmp_path / "raw")
     Image.new("RGB", (21, 10), "white").save(voc_root / "JPEGImages" / "train-1.jpg")
@@ -59,7 +74,7 @@ def test_loaded_metadata_rejects_changed_label_mapping(tmp_path: Path) -> None:
     prepare_voc2007(voc_root.parent.parent, output, expected_split_counts=None)
     metadata_path = output / "dataset.yaml"
     content = metadata_path.read_text(encoding="utf-8")
-    metadata_path.write_text(content.replace("  aeroplane: 1", "  aeroplane: 2"), encoding="utf-8")
+    metadata_path.write_text(content.replace("  cat: 1", "  cat: 2"), encoding="utf-8")
 
     with pytest.raises(ManifestError, match="label_by_name"):
         load_dataset_metadata(output)

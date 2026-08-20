@@ -31,7 +31,11 @@ def test_uncached_reference_weight_is_a_notice(prepared_voc: PreparedVoc, monkey
     config = replace(
         config,
         data=replace(config.data, manifest_dir=prepared_voc.manifests),
-        model=replace(config.model, weights="imagenet1k_v1"),
+        model=replace(
+            config.model,
+            weights="imagenet1k_v1",
+            expected_num_classes=len(prepared_voc.metadata.class_names) + 1,
+        ),
         output_dir=tmp_path / "artifacts",
     )
     monkeypatch.setattr("object_detector.preflight.expected_weight_cache_path", lambda *_: tmp_path / "missing.pth")

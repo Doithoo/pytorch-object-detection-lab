@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=83,<84"]
+requires = ["setuptools>=83,<85"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -35,13 +35,13 @@ dependencies = [
 dev = [
     "pytest>=9.0.3,<10",
     "ruff>=0.6,<1",
-    "mypy>=1.15,<2",
+    "mypy>=1.15,<3",
     "types-PyYAML>=6,<7",
     "pre-commit>=3,<5",
     "build>=1.2,<2",
-    "setuptools>=83,<84",
+    "setuptools>=83,<85",
     "tomli>=2,<3; python_version < '3.11'",
-    "twine>=5,<7",
+    "twine>=5,<8",
     "matplotlib>=3.6,<4",
 ]
 

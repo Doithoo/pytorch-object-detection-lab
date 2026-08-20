@@ -115,7 +115,7 @@ def test_publication_metadata_and_configs_are_declared() -> None:
     assert project["urls"]["Source"] == "https://github.com/Doithoo/pytorch-object-detection-lab"
     dev_dependencies = project["optional-dependencies"]["dev"]
     assert "tomli>=2,<3; python_version < '3.11'" in dev_dependencies
-    assert "setuptools>=77,<82" in dev_dependencies
+    assert "setuptools>=83,<84" in dev_dependencies
     assert setuptools["data-files"] == {
         "share/pytorch-object-detection-lab/configs": [
             "configs/custom_detector_example.yaml",

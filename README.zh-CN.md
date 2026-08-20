@@ -132,13 +132,15 @@ uv run detect train --config configs/learning_minimal.yaml --dry-run --device cp
 - 如何查看逐类别 AP、误检、漏检和预测图，而不只看一个总分。
 - 如何从 checkpoint 继续训练，或对自己的图片运行预测。
 
-项目提供三个模型配置：
+项目提供五个注册模型配置和显式外部工厂：
 
 | 名称 | 适合用途 |
 |---|---|
 | `fasterrcnn_mobilenet_v3_large_320_fpn` | 默认入门模型，也是 Kaggle 实测模型 |
 | `fasterrcnn_resnet50_fpn` | 更大的 Faster R-CNN 对照模型 |
-| `ssdlite320_mobilenet_v3_large` | 单阶段检测器对照模型 |
+| `retinanet_resnet50_fpn` | 使用 Focal Loss 的 anchor-based 单阶段检测器 |
+| `fcos_resnet50_fpn` | 使用 centerness 的 anchor-free 单阶段检测器 |
+| `ssdlite320_mobilenet_v3_large` | 紧凑的单阶段检测器对照 |
 
 模型和权重说明见[模型选择指南](docs/guides/using-models.zh-CN.md)，配置文件说明见
 [配置目录](configs/README.zh-CN.md)。

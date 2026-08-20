@@ -63,9 +63,12 @@ object_detector = ["py.typed"]
 
 [tool.setuptools.data-files]
 "share/pytorch-object-detection-lab/configs" = [
+    "configs/custom_detector_example.yaml",
     "configs/fasterrcnn_resnet50_fpn.yaml",
+    "configs/fcos_resnet50_fpn.yaml",
     "configs/learning_minimal.yaml",
     "configs/reference_fasterrcnn.yaml",
+    "configs/retinanet_resnet50_fpn.yaml",
     "configs/ssdlite320_mobilenet_v3.yaml",
 ]
 

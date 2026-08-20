@@ -2,8 +2,7 @@
 
 [English](using-models.md) | [模型参考](../reference/model-zoo.zh-CN.md)
 
-项目提供三个 torchvision 检测器。第一次训练建议使用已经在 Kaggle 跑通的 Faster R-CNN
-MobileNet，熟悉流程后再比较其他模型。
+项目提供五个 torchvision 检测器和显式外部工厂。Faster R-CNN MobileNet 有一份 Kaggle 实测记录，其他注册项在相同项目协议下展示不同架构。
 
 ```bash
 uv run detect list-models
@@ -12,15 +11,17 @@ uv run detect model-info fasterrcnn_mobilenet_v3_large_320_fpn
 
 这些命令只显示模型信息，不下载权重，也不开始训练。
 
-## 三个模型怎样选择
+## 模型特点
 
 | 模型 | 特点 | 建议 |
 |---|---|---|
-| `fasterrcnn_mobilenet_v3_large_320_fpn` | 两阶段、较紧凑，已完成 Kaggle VOC 训练 | 第一次运行使用 |
-| `fasterrcnn_resnet50_fpn` | 两阶段、更大的 backbone，需要更多计算 | 理解 backbone 影响时比较 |
-| `ssdlite320_mobilenet_v3_large` | 单阶段、固定 320 输入 | 比较一阶段和两阶段检测器时使用 |
+| `fasterrcnn_mobilenet_v3_large_320_fpn` | 两阶段、较紧凑，已完成 Kaggle VOC 训练 | 已记录的参考实现 |
+| `fasterrcnn_resnet50_fpn` | 两阶段、更大的 backbone，需要更多计算 | 在 Faster R-CNN 内观察 backbone 容量差异 |
+| `retinanet_resnet50_fpn` | anchor-based 单阶段模型，使用 Focal Loss | 查看密集 anchors 和类别不平衡处理 |
+| `fcos_resnet50_fpn` | anchor-free 单阶段模型，使用 centerness | 查看不依赖预定义 anchors 的位置预测 |
+| `ssdlite320_mobilenet_v3_large` | 紧凑单阶段模型，固定 320 输入 | 查看面向移动端的密集检测器 |
 
-项目没有在相同训练预算下发布三个模型的完整对比，因此不能从这张表推断速度或精度排名。
+项目没有在相同训练预算下发布五个模型的完整对比，因此不能从这张表推断速度或精度排名。
 
 ## 权重设置
 
@@ -36,8 +37,7 @@ uv run detect model-info fasterrcnn_mobilenet_v3_large_320_fpn
 uv run detect show-config --config configs/reference_fasterrcnn.yaml
 ```
 
-模型参数中的 `min_size`、`max_size` 和 `box_score_thresh` 会影响内部缩放和预测过滤。第一次
-运行先使用项目默认值，不要同时修改多个参数。
+模型参数中的 `min_size`、`max_size` 和 `box_score_thresh` 会影响内部缩放和预测过滤。对比某项设置时，一次只改变与该问题相关的参数。
 
 ## 做一次公平比较
 

@@ -1,6 +1,6 @@
 # Small Examples
 
-[简体中文](README.zh-CN.md) | [Tutorial](../docs/tutorial/README.md)
+[简体中文](README.zh-CN.md) | [Reference notes](../docs/tutorial/README.md)
 
 Each program isolates one idea and can run on a local CPU. The examples use
 synthetic data or an existing checkpoint. They do not train a full VOC model or
@@ -36,4 +36,9 @@ The final example needs a downloaded checkpoint and image:
 uv run python examples/05_checkpoint_prediction.py --checkpoint kaggle-output/reference-fasterrcnn/best.pt --image image.jpg --output-dir artifacts/example-prediction
 ```
 
-For real training, continue to the [Kaggle guide](../docs/guides/kaggle.md).
+The importable factory under `examples/extensions/custom_detector.py` shows how
+to replace a backbone and anchor generator while retaining the project model
+contract. Use it through `configs/custom_detector_example.yaml`; details are in
+the [model modification example](../docs/guides/modifying-models.md).
+
+For a recorded full training run, see the [Kaggle guide](../docs/guides/kaggle.md).

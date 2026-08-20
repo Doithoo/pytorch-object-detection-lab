@@ -151,13 +151,15 @@ The command and considerations are in the
   instead of relying on one score.
 - How to resume from a checkpoint or run predictions on your own images.
 
-The project includes three model configurations:
+The project includes five registered model configurations plus explicit external factories:
 
 | Name | Good for |
 |---|---|
 | `fasterrcnn_mobilenet_v3_large_320_fpn` | Default beginner model and the recorded Kaggle model |
 | `fasterrcnn_resnet50_fpn` | A larger Faster R-CNN comparison |
-| `ssdlite320_mobilenet_v3_large` | A one-stage detector comparison |
+| `retinanet_resnet50_fpn` | Anchor-based one-stage detector with focal loss |
+| `fcos_resnet50_fpn` | Anchor-free one-stage detector with centerness |
+| `ssdlite320_mobilenet_v3_large` | A compact one-stage detector comparison |
 
 See [choosing a model](docs/guides/using-models.md) and the
 [configuration directory](configs/README.md) for details.

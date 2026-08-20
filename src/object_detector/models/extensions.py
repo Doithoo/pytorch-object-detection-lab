@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import inspect
 from collections.abc import Callable, Iterable
+from pathlib import Path
+from types import ModuleType
 
 import torch
 from torch import nn
@@ -20,8 +23,13 @@ def load_factory(path: str, *, required_keywords: Iterable[str]) -> Callable[...
         raise ExtensionError(f"invalid factory path {path!r}; expected module:function")
     try:
         module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        module = _load_local_module(module_name, exc)
+    except (ImportError, OSError) as exc:
+        raise ExtensionError(f"could not load factory {path!r}: {exc}") from exc
+    try:
         factory = getattr(module, attribute_name)
-    except (AttributeError, ImportError, OSError) as exc:
+    except AttributeError as exc:
         raise ExtensionError(f"could not load factory {path!r}: {exc}") from exc
     if not callable(factory):
         raise ExtensionError(f"factory {path!r} is not callable")
@@ -45,6 +53,21 @@ def load_factory(path: str, *, required_keywords: Iterable[str]) -> Callable[...
         ):
             raise ExtensionError(f"factory {path!r} has unsupported required parameter {parameter.name!r}")
     return factory
+
+
+def _load_local_module(module_name: str, original_error: ModuleNotFoundError) -> ModuleType:
+    source = Path.cwd().joinpath(*module_name.split(".")).with_suffix(".py")
+    if not source.is_file():
+        raise ExtensionError(f"could not import module {module_name!r}: {original_error}") from original_error
+    spec = importlib.util.spec_from_file_location(module_name, source)
+    if spec is None or spec.loader is None:
+        raise ExtensionError(f"could not create an import specification for {source}")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError) as exc:
+        raise ExtensionError(f"could not load local module {source}: {exc}") from exc
+    return module
 
 
 class DetectionFactoryModel(nn.Module):

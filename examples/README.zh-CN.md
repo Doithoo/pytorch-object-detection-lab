@@ -1,6 +1,6 @@
 # 小型示例
 
-[English](README.md) | [教程](../docs/tutorial/README.zh-CN.md)
+[English](README.md) | [参考说明](../docs/tutorial/README.zh-CN.md)
 
 这些程序一次只展示一个概念，适合在本地 CPU 上运行。它们使用合成数据或已有 checkpoint，
 不会训练完整 VOC 模型，也不会产生可比较的模型成绩。
@@ -34,4 +34,8 @@ uv run python examples/04_minimal_training_loop.py --lr 0.1
 uv run python examples/05_checkpoint_prediction.py --checkpoint kaggle-output/reference-fasterrcnn/best.pt --image image.jpg --output-dir artifacts/example-prediction
 ```
 
-想完成真实训练，请使用 [Kaggle 指南](../docs/guides/kaggle.zh-CN.md)。
+`examples/extensions/custom_detector.py` 中的可导入工厂展示如何替换 backbone 和
+anchor generator，同时保留项目模型协议。通过 `configs/custom_detector_example.yaml`
+使用；细节见[模型修改示例](../docs/guides/modifying-models.zh-CN.md)。
+
+完整实测训练记录见 [Kaggle 指南](../docs/guides/kaggle.zh-CN.md)。

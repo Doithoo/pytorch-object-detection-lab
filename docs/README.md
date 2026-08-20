@@ -40,6 +40,7 @@ The completed Kaggle T4 run and its real outputs are in the
 |---|---|
 | A Kaggle run failed | [Troubleshooting](guides/troubleshooting.md) |
 | Which model should I choose? | [Using models](guides/using-models.md) |
+| How can I modify a detector? | [Model modification example](guides/modifying-models.md) |
 | What does a configuration field mean? | [Configuration reference](reference/config-reference.md) |
 | How are VOC manifests and annotations stored? | [Dataset format](reference/dataset-format.md) |
 | What do metrics and output files mean? | [Metrics reference](reference/metrics.md) |

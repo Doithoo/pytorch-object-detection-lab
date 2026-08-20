@@ -16,16 +16,18 @@ uv run detect show-config --config configs/reference_fasterrcnn.yaml
 |---|---|---|
 | `reference_fasterrcnn.yaml` | Kaggle 主训练：Faster R-CNN MobileNet V3、26 轮、完整 VOC | `imagenet1k_v1`；需要联网下载或已有缓存 |
 | `learning_minimal.yaml` | 本地 dry run 或少量样本代码检查 | `none`；模型随机初始化，不下载权重 |
-| `fasterrcnn_resnet50_fpn.yaml` | 尝试更大的 Faster R-CNN backbone | `none`；默认不下载权重 |
-| `ssdlite320_mobilenet_v3.yaml` | 尝试单阶段 SSDLite | `none`；默认不下载权重 |
+| `custom_detector_example.yaml` | 导入仓库中的自定义 backbone/anchor 工厂示例 | `none`；默认不下载权重 |
+| `fasterrcnn_resnet50_fpn.yaml` | 查看更大的 Faster R-CNN backbone | `none`；默认不下载权重 |
+| `retinanet_resnet50_fpn.yaml` | 查看使用 Focal Loss 的 anchor-based 单阶段检测器 | `none`；默认不下载权重 |
+| `fcos_resnet50_fpn.yaml` | 查看 anchor-free 单阶段检测器 | `none`；默认不下载权重 |
+| `ssdlite320_mobilenet_v3.yaml` | 查看单阶段 SSDLite | `none`；默认不下载权重 |
 
 项目发布的完整训练结果只来自 `reference_fasterrcnn.yaml` 的已完成 Kaggle 训练。其他配置
 没有发布完整 VOC 成绩。
 
-## 推荐选择
+## 参考命令
 
-第一次训练直接使用 Kaggle runner，它会加载 `reference_fasterrcnn.yaml` 并覆盖设备、AMP、
-worker 数量和 Kaggle 路径。步骤见 [Kaggle 指南](../docs/guides/kaggle.zh-CN.md)。
+已记录的 Kaggle 运行会加载 `reference_fasterrcnn.yaml`，并覆盖设备、AMP、worker 数量和 Kaggle 路径。具体信息见 [Kaggle 指南](../docs/guides/kaggle.zh-CN.md)。
 
 只想在本地确认数据和模型能完成一次更新时，使用：
 

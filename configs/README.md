@@ -18,18 +18,19 @@ model, or start training.
 |---|---|---|
 | `reference_fasterrcnn.yaml` | Main Kaggle training: Faster R-CNN MobileNet V3, 26 epochs, full VOC | `imagenet1k_v1`; requires a download or existing cache |
 | `learning_minimal.yaml` | Local dry run or small-sample code check | `none`; random initialization and no weight download |
+| `custom_detector_example.yaml` | Import the repository's custom backbone/anchor factory example | `none`; no weight download by default |
 | `fasterrcnn_resnet50_fpn.yaml` | Try a larger Faster R-CNN backbone | `none`; no weight download by default |
+| `retinanet_resnet50_fpn.yaml` | Inspect an anchor-based one-stage detector with focal loss | `none`; no weight download by default |
+| `fcos_resnet50_fpn.yaml` | Inspect an anchor-free one-stage detector | `none`; no weight download by default |
 | `ssdlite320_mobilenet_v3.yaml` | Try the one-stage SSDLite model | `none`; no weight download by default |
 
 The complete training result published by the project comes only from the
 completed Kaggle run of `reference_fasterrcnn.yaml`. No full VOC result is
 published for the other configurations.
 
-## Recommended choice
+## Reference commands
 
-For a first training run, use the Kaggle runner. It loads
-`reference_fasterrcnn.yaml` and changes the device, AMP, worker count, and paths
-for Kaggle. See the [Kaggle guide](../docs/guides/kaggle.md).
+The recorded Kaggle run loads `reference_fasterrcnn.yaml` and changes the device, AMP, worker count, and paths for Kaggle. See the [Kaggle guide](../docs/guides/kaggle.md).
 
 To check one local data and model update, use:
 

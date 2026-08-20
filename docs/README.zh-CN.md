@@ -33,6 +33,7 @@
 |---|---|
 | Kaggle 运行失败 | [排错指南](guides/troubleshooting.zh-CN.md) |
 | 应该选哪个模型 | [使用模型](guides/using-models.zh-CN.md) |
+| 如何修改 detector | [模型修改示例](guides/modifying-models.zh-CN.md) |
 | 配置字段是什么意思 | [配置参考](reference/config-reference.zh-CN.md) |
 | VOC 清单和标注格式 | [数据格式](reference/dataset-format.zh-CN.md) |
 | 指标和输出文件 | [指标参考](reference/metrics.zh-CN.md) |

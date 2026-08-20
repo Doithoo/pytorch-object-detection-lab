@@ -32,6 +32,24 @@ def build_fasterrcnn_resnet50(num_classes: int, weights: str, params: Mapping[st
     )
 
 
+def build_retinanet_resnet50(num_classes: int, weights: str, params: Mapping[str, object]) -> nn.Module:
+    return detection_models.retinanet_resnet50_fpn(
+        weights=None,
+        weights_backbone=_resnet_weights(weights),
+        num_classes=num_classes,
+        **dict(params),
+    )
+
+
+def build_fcos_resnet50(num_classes: int, weights: str, params: Mapping[str, object]) -> nn.Module:
+    return detection_models.fcos_resnet50_fpn(
+        weights=None,
+        weights_backbone=_resnet_weights(weights),
+        num_classes=num_classes,
+        **dict(params),
+    )
+
+
 def build_ssdlite_mobilenet(num_classes: int, weights: str, params: Mapping[str, object]) -> nn.Module:
     backbone_weights = _mobile_weights(weights)
     return detection_models.ssdlite320_mobilenet_v3_large(
@@ -63,6 +81,8 @@ __all__ = [
     "ResNet50_Weights",
     "build_fasterrcnn_mobilenet",
     "build_fasterrcnn_resnet50",
+    "build_fcos_resnet50",
+    "build_retinanet_resnet50",
     "build_ssdlite_mobilenet",
     "detection_models",
     "torchvision_models",

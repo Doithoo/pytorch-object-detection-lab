@@ -44,7 +44,7 @@ monorepo coupling among the classification, segmentation, and detection labs.
 ## Audience And Learning Path
 
 The primary reader has completed an introductory PyTorch exercise but has not
-yet built an object detector. The guided path should take roughly 8-12 hours.
+yet built an object detector. The reference path is designed as a compact end-to-end example.
 The first pass keeps one concept visible at a time and explains:
 
 1. how variable numbers of boxes change dataset and batching contracts;

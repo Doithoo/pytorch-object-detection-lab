@@ -217,6 +217,8 @@ def test_list_models_prints_stable_registry_metadata(capsys) -> None:
     assert output[1:] == [
         "fasterrcnn_mobilenet_v3_large_320_fpn\ttwo_stage\tnone,imagenet1k_v1",
         "fasterrcnn_resnet50_fpn\ttwo_stage\tnone,imagenet1k_v1",
+        "fcos_resnet50_fpn\tone_stage\tnone,imagenet1k_v1",
+        "retinanet_resnet50_fpn\tone_stage\tnone,imagenet1k_v1",
         "ssdlite320_mobilenet_v3_large\tone_stage\tnone,imagenet1k_v1",
     ]
 

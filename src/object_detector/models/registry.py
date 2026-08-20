@@ -55,6 +55,26 @@ def _build_fasterrcnn_resnet50(
     return build_fasterrcnn_resnet50(num_classes, weights, params)
 
 
+def _build_retinanet_resnet50(
+    num_classes: int,
+    weights: str,
+    params: Mapping[str, object],
+) -> nn.Module:
+    from object_detector.models.torchvision_models import build_retinanet_resnet50
+
+    return build_retinanet_resnet50(num_classes, weights, params)
+
+
+def _build_fcos_resnet50(
+    num_classes: int,
+    weights: str,
+    params: Mapping[str, object],
+) -> nn.Module:
+    from object_detector.models.torchvision_models import build_fcos_resnet50
+
+    return build_fcos_resnet50(num_classes, weights, params)
+
+
 def _build_ssdlite_mobilenet(
     num_classes: int,
     weights: str,
@@ -107,6 +127,47 @@ _REGISTRY: dict[str, ModelSpec] = {
         input_notes=(
             "Accepts a list of float RGB tensors in [0, 1].",
             "Uses more memory and compute than the MobileNet Faster R-CNN recipe.",
+        ),
+        backbone_weights=_LazyBackboneWeights(_resnet50_weight),
+    ),
+    "retinanet_resnet50_fpn": ModelSpec(
+        name="retinanet_resnet50_fpn",
+        constructor=_build_retinanet_resnet50,
+        family="one_stage",
+        description="Anchor-based RetinaNet with a ResNet-50 FPN backbone and focal loss.",
+        parameters={
+            "min_size": "Shorter image edge used by the internal detector transform.",
+            "max_size": "Maximum longer image edge after resizing.",
+            "score_thresh": "Inference score threshold before NMS.",
+            "nms_thresh": "IoU threshold used by non-maximum suppression.",
+            "detections_per_img": "Maximum detections returned for one image.",
+            "topk_candidates": "Highest-scoring candidates retained before NMS.",
+            "fg_iou_thresh": "Anchor IoU threshold for positive training matches.",
+            "bg_iou_thresh": "Anchor IoU threshold below which matches are negative.",
+        },
+        input_notes=(
+            "Accepts a list of float RGB tensors in [0, 1].",
+            "Uses dense anchors and focal loss instead of an ROI head.",
+        ),
+        backbone_weights=_LazyBackboneWeights(_resnet50_weight),
+    ),
+    "fcos_resnet50_fpn": ModelSpec(
+        name="fcos_resnet50_fpn",
+        constructor=_build_fcos_resnet50,
+        family="one_stage",
+        description="Anchor-free FCOS detector with a ResNet-50 FPN backbone.",
+        parameters={
+            "min_size": "Shorter image edge used by the internal detector transform.",
+            "max_size": "Maximum longer image edge after resizing.",
+            "score_thresh": "Inference score threshold before NMS.",
+            "nms_thresh": "IoU threshold used by non-maximum suppression.",
+            "detections_per_img": "Maximum detections returned for one image.",
+            "topk_candidates": "Highest-scoring candidates retained before NMS.",
+            "center_sampling_radius": "Radius used to select positive locations near box centers.",
+        },
+        input_notes=(
+            "Accepts a list of float RGB tensors in [0, 1].",
+            "Predicts class, box distances, and centerness without predefined anchors.",
         ),
         backbone_weights=_LazyBackboneWeights(_resnet50_weight),
     ),
